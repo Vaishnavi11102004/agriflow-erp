@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Sprout, ShoppingCart, Calendar,
-  History, User, LogOut, Menu, X, Globe, ChevronDown,
+  History, User, LogOut, Menu, X, Globe,
   MessageCircle, Leaf
 } from 'lucide-react';
 import api from '../services/api/axios';
@@ -21,7 +21,12 @@ export default function FarmerLayout() {
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(() => localStorage.getItem('sidebar_open') !== 'false');
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    // Default open on desktop, closed on mobile
+    if (typeof window !== 'undefined' && window.innerWidth < 768) return false;
+    return localStorage.getItem('sidebar_open') !== 'false';
+  });
   const [showLang, setShowLang] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMsg, setChatMsg] = useState('');
@@ -46,6 +51,11 @@ export default function FarmerLayout() {
   useEffect(() => {
     api.get('/farmer/market-rates').then(r => setMarketRates(r.data)).catch(() => {});
   }, []);
+
+  // Auto-close sidebar on mobile when navigating
+  useEffect(() => {
+    if (window.innerWidth < 768) setSidebarOpen(false);
+  }, [location.pathname]);
 
   const changeLang = (code) => {
     i18n.changeLanguage(code);
@@ -86,13 +96,28 @@ export default function FarmerLayout() {
 
   return (
     <div className="flex h-screen overflow-hidden agro-bg">
-      {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} flex-shrink-0 transition-all duration-300 overflow-hidden`}>
-        <div className="w-64 h-full bg-gradient-to-b from-agro-green to-agro-dark flex flex-col shadow-green">
+
+      {/* Mobile backdrop — only visible when sidebar open on small screens */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar
+          Mobile  → fixed overlay drawer that slides in from left
+          Desktop → relative flex element that collapses to w-0 */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 transition-transform duration-300
+        md:relative md:z-auto md:flex-shrink-0 md:overflow-hidden md:transition-all md:duration-300
+        ${sidebarOpen ? 'translate-x-0 md:w-64' : '-translate-x-full md:w-0 md:translate-x-0'}
+      `}>
+        <div className="w-64 h-full bg-gradient-to-b from-agro-green to-agro-dark flex flex-col shadow-green overflow-y-auto">
           {/* Logo */}
           <div className="p-5 border-b border-white/10">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
                 <Leaf className="text-white" size={22} />
               </div>
               <div>
@@ -105,12 +130,12 @@ export default function FarmerLayout() {
           {/* Farmer info */}
           <div className="px-4 py-3 border-b border-white/10">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-primary-400 flex items-center justify-center text-white font-bold text-sm">
+              <div className="w-9 h-9 rounded-full bg-primary-400 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                 {user?.name?.[0]?.toUpperCase()}
               </div>
               <div className="overflow-hidden">
                 <p className="text-white text-sm font-semibold truncate">{user?.name}</p>
-                <p className="text-white/50 text-xs">{user?.phone}</p>
+                <p className="text-white/50 text-xs truncate">{user?.phone}</p>
               </div>
             </div>
           </div>
@@ -136,17 +161,17 @@ export default function FarmerLayout() {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Topbar */}
-        <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-4 flex-shrink-0 shadow-sm z-50">
-          <button onClick={() => setSidebarOpen(v => !v)} className="btn-icon">
+        <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center gap-3 flex-shrink-0 shadow-sm z-30">
+          <button onClick={() => setSidebarOpen(v => !v)} className="btn-icon flex-shrink-0">
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <h2 className="text-gray-700 font-semibold text-base flex-1 hidden sm:block">
+          <h2 className="text-gray-700 font-semibold text-base flex-1 min-w-0 hidden sm:block truncate">
             {t('app_name')} — {t('farm_overview')}
           </h2>
 
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-2 ml-auto flex-shrink-0">
             {/* Language Switcher */}
             <div className="relative">
               <button onClick={() => { setShowLang(v => !v); }}
@@ -168,20 +193,19 @@ export default function FarmerLayout() {
             </div>
 
             <NotificationCenter />
-            
           </div>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-6">
           <Outlet />
         </main>
       </div>
 
       {/* Chatbot */}
-      <div className="fixed bottom-6 right-6 z-40">
+      <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40">
         {chatOpen && (
-          <div className="mb-3 bg-white rounded-2xl shadow-2xl border border-gray-200 w-80 flex flex-col overflow-hidden animate-fade-in">
+          <div className="mb-3 bg-white rounded-2xl shadow-2xl border border-gray-200 w-72 sm:w-80 flex flex-col overflow-hidden animate-fade-in">
             <div className="bg-agro-green text-white p-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <MessageCircle size={18} />
@@ -189,7 +213,7 @@ export default function FarmerLayout() {
               </div>
               <button onClick={() => setChatOpen(false)} className="text-white/70 hover:text-white"><X size={16} /></button>
             </div>
-            <div className="flex-1 p-3 space-y-2 overflow-y-auto max-h-60">
+            <div className="flex-1 p-3 space-y-2 overflow-y-auto max-h-52 sm:max-h-60">
               {chatHistory.map((m, i) => (
                 <div key={i} className={`flex ${m.from === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`px-3 py-2 rounded-xl text-xs max-w-[85%] whitespace-pre-line leading-relaxed
@@ -208,8 +232,8 @@ export default function FarmerLayout() {
           </div>
         )}
         <button onClick={() => setChatOpen(v => !v)}
-          className="w-14 h-14 bg-agro-green hover:bg-primary-700 text-white rounded-full shadow-green flex items-center justify-center transition-all duration-300 active:scale-95">
-          {chatOpen ? <X size={22} /> : <MessageCircle size={22} />}
+          className="w-12 h-12 sm:w-14 sm:h-14 bg-agro-green hover:bg-primary-700 text-white rounded-full shadow-green flex items-center justify-center transition-all duration-300 active:scale-95">
+          {chatOpen ? <X size={20} /> : <MessageCircle size={20} />}
         </button>
       </div>
     </div>

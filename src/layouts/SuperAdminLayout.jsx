@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, Users, UserCheck, FileText, LogOut, Menu, X, Globe, Crown, Leaf } from 'lucide-react';
+import { LayoutDashboard, Users, UserCheck, LogOut, Menu, X, Globe, Crown } from 'lucide-react';
 
 const LANGUAGES = [
   { code: 'en', label: 'English', flag: '🇬🇧' },
@@ -14,7 +14,12 @@ export default function SuperAdminLayout() {
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    // Default open on desktop, closed on mobile
+    if (typeof window !== 'undefined' && window.innerWidth < 768) return false;
+    return true;
+  });
   const [showLang, setShowLang] = useState(false);
 
   const navItems = [
@@ -24,15 +29,36 @@ export default function SuperAdminLayout() {
     { to: '/admin/dashboard/operational', icon: <LayoutDashboard size={18} />, label: t('operational_portal') },
   ];
 
+  // Auto-close sidebar on mobile when navigating
+  useEffect(() => {
+    if (window.innerWidth < 768) setSidebarOpen(false);
+  }, [location.pathname]);
+
   const changeLang = (code) => { i18n.changeLanguage(code); localStorage.setItem('agro_lang', code); setShowLang(false); };
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f0fdf4 100%)' }}>
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} flex-shrink-0 transition-all duration-300 overflow-hidden`}>
+
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar
+          Mobile  → fixed overlay drawer
+          Desktop → relative flex collapse */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 transition-transform duration-300
+        md:relative md:z-auto md:flex-shrink-0 md:overflow-hidden md:transition-all md:duration-300
+        ${sidebarOpen ? 'translate-x-0 md:w-64' : '-translate-x-full md:w-0 md:translate-x-0'}
+      `}>
         <div className="w-64 h-full bg-gradient-to-b from-primary-800 to-primary-950 flex flex-col shadow-xl">
           <div className="p-5 border-b border-white/10">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-gold-500 to-gold-700 rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-700 rounded-xl flex items-center justify-center flex-shrink-0">
                 <Crown className="text-white" size={20} />
               </div>
               <div>
@@ -43,7 +69,7 @@ export default function SuperAdminLayout() {
           </div>
           <div className="px-4 py-3 border-b border-white/10">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-primary-500 flex items-center justify-center text-white font-bold text-sm">
+              <div className="w-9 h-9 rounded-full bg-primary-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                 {user?.name?.[0]?.toUpperCase()}
               </div>
               <div className="overflow-hidden">
@@ -69,15 +95,15 @@ export default function SuperAdminLayout() {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-4 shadow-sm z-50">
-          <button onClick={() => setSidebarOpen(v => !v)} className="btn-icon">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center gap-3 shadow-sm z-30">
+          <button onClick={() => setSidebarOpen(v => !v)} className="btn-icon flex-shrink-0">
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <div className="flex-1">
-            <span className="text-gray-600 text-sm font-medium">Super Admin Control Panel</span>
+          <div className="flex-1 min-w-0">
+            <span className="text-gray-600 text-sm font-medium hidden sm:block truncate">Super Admin Control Panel</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <div className="relative">
               <button onClick={() => setShowLang(v => !v)} className="btn-icon flex items-center gap-1">
                 <Globe size={18} />
@@ -93,9 +119,13 @@ export default function SuperAdminLayout() {
                 </div>
               )}
             </div>
+            <div className="pl-2 border-l border-gray-200 ml-1 hidden sm:block">
+              <p className="text-sm font-semibold text-gray-800 truncate max-w-[120px]">{user?.name}</p>
+              <p className="text-xs text-gray-400">{user?.role}</p>
+            </div>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-6">
           <Outlet />
         </main>
       </div>

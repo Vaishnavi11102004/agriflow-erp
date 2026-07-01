@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
@@ -44,6 +44,25 @@ export default function LandingPage() {
   const [showLang, setShowLang] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [seedSearch, setSeedSearch] = useState('');
+  const [activeSection, setActiveSection] = useState('hero');
+
+  // Highlight nav based on scroll position
+  useEffect(() => {
+    const sectionIds = ['hero', 'market-rates', 'seeds-catalog', 'how-it-works', 'features'];
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) setActiveSection(entry.target.id);
+        });
+      },
+      { rootMargin: '-20% 0px -65% 0px', threshold: 0 }
+    );
+    sectionIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, []);
 
   const { data: stats = { farmers: 0, crops: 0, seeds: 0, warehouses: 0 } } = useQuery({
     queryKey: ['public-stats'],
@@ -135,7 +154,11 @@ export default function LandingPage() {
                 <button
                   key={link.id}
                   onClick={() => scrollTo(link.id)}
-                  className="hover:text-primary-700 transition-colors"
+                  className={`transition-colors pb-0.5 ${
+                    activeSection === link.id
+                      ? 'text-primary-700 font-semibold border-b-2 border-primary-600'
+                      : 'hover:text-primary-700 border-b-2 border-transparent'
+                  }`}
                 >
                   {t(link.labelKey)}
                 </button>
@@ -193,7 +216,11 @@ export default function LandingPage() {
               <button
                 key={link.id}
                 onClick={() => { scrollTo(link.id); setMobileMenuOpen(false); }}
-                className="block w-full text-left py-2 text-sm font-medium text-gray-700 hover:text-primary-700"
+                className={`block w-full text-left py-2 text-sm font-medium transition-colors ${
+                  activeSection === link.id
+                    ? 'text-primary-700 font-semibold'
+                    : 'text-gray-700 hover:text-primary-700'
+                }`}
               >
                 {t(link.labelKey)}
               </button>
