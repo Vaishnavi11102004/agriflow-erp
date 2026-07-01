@@ -147,7 +147,7 @@
     @apply fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4;
   }
   .modal-content {
-    @apply bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto;
+    @apply bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto mx-4;
   }
   .modal-header {
     @apply p-6 border-b border-gray-100 flex items-center justify-between;
@@ -225,3 +225,16 @@
 .warehouse-fill-green { @apply bg-gradient-to-r from-primary-400 to-primary-600 h-full rounded-full transition-all duration-700; }
 .warehouse-fill-yellow { @apply bg-gradient-to-r from-gold-400 to-gold-600 h-full rounded-full transition-all duration-700; }
 .warehouse-fill-red { @apply bg-gradient-to-r from-red-400 to-red-600 h-full rounded-full transition-all duration-700; }
+
+/* ── Mobile responsive utilities ── */
+
+/* Tables always scroll horizontally on small screens */
+.table-container { @apply overflow-x-auto rounded-xl -mx-0; }
+
+/* Page header stacks on mobile */
+@media (max-width: 640px) {
+  .page-header { @apply flex-col items-start gap-3; }
+  .stat-card { @apply p-4; }
+  .stat-value { @apply text-2xl; }
+  .section-card { @apply p-4; }
+}

@@ -5,9 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Users, Package, Warehouse, BarChart2,
   Calendar, MapPin, TrendingUp, Wheat, LogOut, Menu, X,
-  Globe, Shield, ChevronRight, Leaf, User, FileText
+  Globe, Shield, Leaf, User, FileText
 } from 'lucide-react';
-import api from '../services/api/axios';
 import NotificationCenter from '../components/shared/NotificationCenter';
 import LiveMarketRatesWidget from '../components/shared/LiveMarketRatesWidget';
 
@@ -21,14 +20,18 @@ export default function AdminLayout() {
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(() => localStorage.getItem('admin_sidebar') !== 'false');
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    // Default open on desktop, closed on mobile
+    if (typeof window !== 'undefined' && window.innerWidth < 768) return false;
+    return localStorage.getItem('admin_sidebar') !== 'false';
+  });
   const [showLang, setShowLang] = useState(false);
-  const [notifCount, setNotifCount] = useState(0);
 
   const location = useLocation();
   const basePath = location.pathname.startsWith('/admin/dashboard/operational')
     ? '/admin/dashboard/operational'
     : '/manager/dashboard';
+
   const navItems = [
     { to: `${basePath}`, icon: <LayoutDashboard size={18} />, label: t('dashboard'), end: true, roles: ['manager', 'super_admin'] },
     { to: `${basePath}/farmers`, icon: <Users size={18} />, label: t('farmers'), roles: ['manager', 'super_admin'] },
@@ -48,16 +51,36 @@ export default function AdminLayout() {
 
   useEffect(() => { localStorage.setItem('admin_sidebar', sidebarOpen); }, [sidebarOpen]);
 
+  // Auto-close sidebar on mobile when navigating to a new page
+  useEffect(() => {
+    if (window.innerWidth < 768) setSidebarOpen(false);
+  }, [location.pathname]);
+
   const changeLang = (code) => { i18n.changeLanguage(code); localStorage.setItem('agro_lang', code); setShowLang(false); };
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f0fdf4 100%)' }}>
-      {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} flex-shrink-0 transition-all duration-300 overflow-hidden`}>
-        <div className="w-64 h-full bg-gradient-to-b from-primary-800 to-primary-950 flex flex-col shadow-xl">
+
+      {/* Mobile backdrop — only visible when sidebar is open on small screens */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar
+          Mobile  → fixed overlay drawer that slides in from left (z-50)
+          Desktop → relative flex element that collapses to w-0 */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 transition-transform duration-300
+        md:relative md:z-auto md:flex-shrink-0 md:overflow-hidden md:transition-all md:duration-300
+        ${sidebarOpen ? 'translate-x-0 md:w-64' : '-translate-x-full md:w-0 md:translate-x-0'}
+      `}>
+        <div className="w-64 h-full bg-gradient-to-b from-primary-800 to-primary-950 flex flex-col shadow-xl overflow-y-auto">
           <div className="p-5 border-b border-white/10">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
                 <Shield className="text-white" size={20} />
               </div>
               <div>
@@ -68,7 +91,7 @@ export default function AdminLayout() {
           </div>
           <div className="px-4 py-3 border-b border-white/10">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-primary-500 flex items-center justify-center text-white font-bold text-sm">
+              <div className="w-9 h-9 rounded-full bg-primary-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                 {user?.name?.[0]?.toUpperCase()}
               </div>
               <div className="overflow-hidden">
@@ -95,15 +118,15 @@ export default function AdminLayout() {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-4 shadow-sm z-50">
-          <button onClick={() => setSidebarOpen(v => !v)} className="btn-icon">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center gap-3 shadow-sm z-30">
+          <button onClick={() => setSidebarOpen(v => !v)} className="btn-icon flex-shrink-0">
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <div className="flex-1">
-            <span className="text-gray-600 text-sm font-medium">Manager Dashboard</span>
+          <div className="flex-1 min-w-0">
+            <span className="text-gray-600 text-sm font-medium hidden sm:block truncate">Manager Dashboard</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <div className="relative">
               <button onClick={() => setShowLang(v => !v)} className="btn-icon flex items-center gap-1">
                 <Globe size={18} />
@@ -119,16 +142,14 @@ export default function AdminLayout() {
                 </div>
               )}
             </div>
-            
             <NotificationCenter />
-            
-            <div className="pl-2 border-l border-gray-200 ml-1">
-              <p className="text-sm font-semibold text-gray-800">{user?.name}</p>
+            <div className="pl-2 border-l border-gray-200 ml-1 hidden sm:block">
+              <p className="text-sm font-semibold text-gray-800 truncate max-w-[120px]">{user?.name}</p>
               <p className="text-xs text-gray-400">{user?.role}</p>
             </div>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-6">
           <Outlet />
         </main>
       </div>
