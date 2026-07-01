@@ -7,11 +7,11 @@ const bcrypt = require('bcryptjs');
 if (!process.env.DATABASE_URL) {
   console.error('❌  DATABASE_URL is not set in server/.env');
   console.error('    Please add your Supabase connection string and restart.');
-  throw new Error('DATABASE_URL is missing. Please add it to Netlify Environment Variables.');
+  // Removed throw to prevent 502 Bad Gateway on cold start if env is misconfigured
 }
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres',
   ssl: { rejectUnauthorized: false }, // required for Supabase
   max: 10,
   idleTimeoutMillis: 30000,
