@@ -421,11 +421,12 @@ async function seedInitialData() {
   }
 }
 
-// Boot-time init
-initializeDatabase().catch((err) => {
-  console.error('❌ Database initialisation failed:', err.message);
-  console.error('Full error:', err);
-  // Do not process.exit(1) in a serverless environment, as it crashes the entire lambda.
-});
+// Boot-time init (Only run in development to avoid serverless timeouts)
+if (process.env.NODE_ENV !== 'production') {
+  initializeDatabase().catch((err) => {
+    console.error('❌ Database initialisation failed:', err.message);
+    console.error('Full error:', err);
+  });
+}
 
 module.exports = { query, pool };
