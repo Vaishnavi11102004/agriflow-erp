@@ -257,7 +257,10 @@ export default function SeedsCatalogPage() {
               <Link to="/login" className="hover:text-white transition-colors">{t('footer_farmer_login')}</Link>
 
             </div>
-            <p className="text-gray-500 text-xs">{t('footer_copyright')}</p>
+            <div className="flex flex-col md:items-end gap-1">
+              <p className="text-gray-500 text-xs">{t('footer_copyright')}</p>
+              <p className="text-gray-500 text-xs font-semibold">powered by VPD Technologies</p>
+            </div>
           </div>
         </div>
       </footer>
