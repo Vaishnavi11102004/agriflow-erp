@@ -86,8 +86,8 @@ export default function FeaturesPage() {
               ) : (
                 <>
                   <Link to="/login" className="text-gray-700 font-semibold text-sm px-4 py-2 rounded-xl hover:bg-gray-100 transition-all">{t('login')}</Link>
-                  <Link to="/register" className="flex items-center gap-1.5 bg-primary-600 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-primary-700 transition-all active:scale-95 shadow-md shadow-primary-200">
-                    {t('register')} <ArrowRight size={15} />
+                  <Link to="/login" className="flex items-center gap-1.5 bg-primary-600 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-primary-700 transition-all active:scale-95 shadow-md shadow-primary-200">
+                    {t('login')} <ArrowRight size={15} />
                   </Link>
                 </>
               )}
@@ -108,7 +108,7 @@ export default function FeaturesPage() {
             <Link to="/features" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-sm font-semibold text-primary-700">{t('features_nav')}</Link>
             <div className="flex gap-3 pt-2">
               <Link to="/login" className="flex-1 text-center py-2.5 border-2 border-primary-600 text-primary-700 rounded-xl text-sm font-semibold">{t('login')}</Link>
-              <Link to="/register" className="flex-1 text-center py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold">{t('register')}</Link>
+              <Link to="/login" className="flex-1 text-center py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold">{t('login')}</Link>
             </div>
             <div className="flex gap-2 pt-1">
               {LANGUAGES.map(l => (
@@ -153,7 +153,7 @@ export default function FeaturesPage() {
             <h2 className="text-2xl font-black text-gray-900 mb-4">{t('feat_cta_title')}</h2>
             <p className="text-primary-800/80 mb-8 max-w-xl mx-auto">{t('feat_cta_desc')}</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/register"
+              <Link to="/login"
                 className="flex items-center justify-center gap-2 bg-primary-600 text-white px-8 py-4 rounded-2xl font-bold text-base hover:bg-primary-700 active:scale-95 transition-all shadow-lg shadow-primary-200">
                 {t('feat_create_account')} <ArrowRight size={18} />
               </Link>

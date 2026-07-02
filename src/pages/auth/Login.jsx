@@ -221,10 +221,6 @@ export default function Login() {
             </form>
 
             <div className="mt-6 text-center">
-              <p className="text-gray-500 text-sm">{t('new_farmer')}{' '}
-                <Link to="/register" className="text-emerald-600 font-semibold hover:underline">{t('register')} here</Link>
-              </p>
-              
               <div className="mt-6 space-y-2">
 
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-left">

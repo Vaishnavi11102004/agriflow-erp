@@ -428,6 +428,16 @@ const validationSchemas = {
 
   processPayment: [
     commonValidators.id('id'),
+    commonValidators.text('description', 500),
+  ],
+
+  createFarmer: [
+    commonValidators.name(),
+    commonValidators.phone(),
+    commonValidators.password(),
+    commonValidators.text('address', 500),
+    commonValidators.positiveNumber('acres_of_land', 10000).optional(),
+    commonValidators.text('crop_address', 500),
   ],
 
   createManager: [

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, Users, UserCheck, LogOut, Menu, X, Globe, Crown } from 'lucide-react';
+import { LayoutDashboard, Users, UserCheck, LogOut, Menu, X, Globe, Crown, DollarSign } from 'lucide-react';
 
 const LANGUAGES = [
   { code: 'en', label: 'English', flag: '🇬🇧' },
@@ -26,6 +26,7 @@ export default function SuperAdminLayout() {
     { to: '/admin/dashboard', icon: <LayoutDashboard size={18} />, label: t('dashboard'), end: true },
     { to: '/admin/dashboard/managers', icon: <UserCheck size={18} />, label: t('manage_admins') },
     { to: '/admin/dashboard/farmers', icon: <Users size={18} />, label: t('farmers') },
+    { to: '/admin/dashboard/credits', icon: <DollarSign size={18} />, label: t('credits') || 'Credits' },
     { to: '/admin/dashboard/operational', icon: <LayoutDashboard size={18} />, label: t('operational_portal') },
   ];
 

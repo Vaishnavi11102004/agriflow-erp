@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api/axios';
-import { Users, Search, Eye, Check, X, ChevronRight, User } from 'lucide-react';
+import { Users, Search, Eye, Check, X, ChevronRight, User, Plus, UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function FarmersDirectory() {
@@ -13,6 +13,11 @@ export default function FarmersDirectory() {
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [regSaving, setRegSaving] = useState(false);
+  const [registerForm, setRegisterForm] = useState({
+    name: '', phone: '', password: '', address: '', acres_of_land: '', crop_address: ''
+  });
 
   const { data: farmers = [], isLoading: loading } = useQuery({
     queryKey: ['admin-farmers'],
@@ -37,6 +42,25 @@ export default function FarmersDirectory() {
     } catch { toast.error(t('action_failed')); }
   };
 
+  const handleRegisterFarmer = async (e) => {
+    e.preventDefault();
+    if (!registerForm.name || !registerForm.phone || !registerForm.password) {
+      return toast.error('Name, phone and password are required');
+    }
+    if (registerForm.phone.length !== 10) return toast.error('Phone must be 10 digits');
+    if (registerForm.password.length < 8) return toast.error('Password must be at least 8 characters');
+    setRegSaving(true);
+    try {
+      await api.post('/admin/farmers', registerForm);
+      toast.success('Farmer registered successfully!');
+      queryClient.invalidateQueries({ queryKey: ['admin-farmers'] });
+      setShowRegisterModal(false);
+      setRegisterForm({ name: '', phone: '', password: '', address: '', acres_of_land: '', crop_address: '' });
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Registration failed');
+    } finally { setRegSaving(false); }
+  };
+
   const filtered = farmers.filter(f => {
     const matchStatus = statusFilter === 'all' || f.status === statusFilter;
     const matchSearch = !search || f.name.toLowerCase().includes(search.toLowerCase()) || f.phone.includes(search);
@@ -47,8 +71,11 @@ export default function FarmersDirectory() {
 
   return (
     <div className="animate-fade-in">
-      <div className="page-header">
+      <div className="page-header flex justify-between items-center">
         <div><h1 className="page-title">{t('farmers')}</h1><p className="page-subtitle">{t("manage_farmers_desc")}</p></div>
+        <button onClick={() => setShowRegisterModal(true)} className="btn-primary flex items-center gap-2">
+          <UserPlus size={16} /> Register Farmer
+        </button>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
@@ -186,6 +213,57 @@ export default function FarmersDirectory() {
           </div>
         )}
       </div>
+
+      {/* Register Farmer Modal */}
+      {showRegisterModal && (
+        <div className="modal-backdrop">
+          <div className="modal-content max-w-lg">
+            <div className="modal-header">
+              <h3 className="modal-title">Register New Farmer</h3>
+              <button onClick={() => setShowRegisterModal(false)} className="btn-icon"><X size={18} /></button>
+            </div>
+            <form onSubmit={handleRegisterFarmer}>
+              <div className="modal-body space-y-4">
+                <div>
+                  <label className="label">Full Name *</label>
+                  <input value={registerForm.name} onChange={e => setRegisterForm(f => ({ ...f, name: e.target.value }))} className="input-field" placeholder="Farmer full name" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">Phone (10 digits) *</label>
+                    <input value={registerForm.phone} onChange={e => setRegisterForm(f => ({ ...f, phone: e.target.value }))} className="input-field" placeholder="9876543210" maxLength={10} inputMode="numeric" />
+                  </div>
+                  <div>
+                    <label className="label">Password *</label>
+                    <input type="password" value={registerForm.password} onChange={e => setRegisterForm(f => ({ ...f, password: e.target.value }))} className="input-field" placeholder="Min. 8 characters" />
+                  </div>
+                </div>
+                <div>
+                  <label className="label">Address</label>
+                  <input value={registerForm.address} onChange={e => setRegisterForm(f => ({ ...f, address: e.target.value }))} className="input-field" placeholder="Village / Town" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">Acres of Land</label>
+                    <input type="number" value={registerForm.acres_of_land} onChange={e => setRegisterForm(f => ({ ...f, acres_of_land: e.target.value }))} className="input-field" placeholder="e.g. 5" />
+                  </div>
+                  <div>
+                    <label className="label">Crop Address</label>
+                    <input value={registerForm.crop_address} onChange={e => setRegisterForm(f => ({ ...f, crop_address: e.target.value }))} className="input-field" placeholder="Farm location" />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" onClick={() => setShowRegisterModal(false)} className="btn-ghost">Cancel</button>
+                <button type="submit" disabled={regSaving} className="btn-primary flex items-center gap-2">
+                  {regSaving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <UserPlus size={16} />}
+                  {regSaving ? 'Registering...' : 'Register Farmer'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -10,7 +10,6 @@ import FeaturesPage from '../../pages/public/FeaturesPage';
 
 // Auth Pages
 import Login from '../../pages/auth/Login';
-import Register from '../../pages/auth/Register';
 import ForgotPassword from '../../pages/auth/ForgotPassword';
 
 // Farmer Pages
@@ -35,6 +34,7 @@ import MarketRates from '../../pages/admin/MarketRates';
 import GrainSalesAdmin from '../../pages/admin/GrainSalesAdmin';
 import ManagerProfile from '../../pages/admin/ManagerProfile';
 import EventLogs from '../../pages/admin/EventLogs';
+import CreditsAdmin from '../../pages/admin/CreditsAdmin';
 
 // Super Admin Pages
 import SuperAdminLayout from '../../layouts/SuperAdminLayout';
@@ -54,7 +54,6 @@ export default function AppRouter() {
       <Route path="/how-it-works" element={<HowItWorksPage />} />
       <Route path="/features" element={<FeaturesPage />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
 
       {/* ===== FARMER PORTAL (/farmer) ===== */}
@@ -79,6 +78,7 @@ export default function AppRouter() {
         <Route path="visits" element={<FarmVisits />} />
         <Route path="market-rates" element={<MarketRates />} />
         <Route path="grain-sales" element={<ProtectedRoute allowedRoles={['manager', 'super_admin']}><GrainSalesAdmin /></ProtectedRoute>} />
+        <Route path="credits" element={<ProtectedRoute allowedRoles={['manager', 'super_admin']}><CreditsAdmin /></ProtectedRoute>} />
         <Route path="event-logs" element={<ProtectedRoute allowedRoles={['super_admin']}><EventLogs /></ProtectedRoute>} />
         <Route path="profile" element={<ManagerProfile />} />
       </Route>
@@ -89,6 +89,7 @@ export default function AppRouter() {
         <Route index element={<SuperAdminDashboard />} />
         <Route path="managers" element={<ManageAdmins />} />
         <Route path="farmers" element={<AllFarmers />} />
+        <Route path="credits" element={<CreditsAdmin />} />
       </Route>
 
       {/* Operational portal for super_admin — distinct URL from /manager/dashboard */}
@@ -102,6 +103,7 @@ export default function AppRouter() {
         <Route path="visits" element={<FarmVisits />} />
         <Route path="market-rates" element={<MarketRates />} />
         <Route path="grain-sales" element={<GrainSalesAdmin />} />
+        <Route path="credits" element={<CreditsAdmin />} />
         <Route path="event-logs" element={<EventLogs />} />
         <Route path="profile" element={<ManagerProfile />} />
       </Route>
