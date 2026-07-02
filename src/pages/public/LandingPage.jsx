@@ -685,7 +685,7 @@ export default function LandingPage() {
             </div>
             <div className="flex flex-col md:items-end gap-1">
               <p className="text-gray-500 text-xs">{t('footer_copyright')}</p>
-              <p className="text-gray-500 text-xs font-semibold">powered by VPD Technologies</p>
+              <p className="text-gray-500 text-xs font-semibold">Powered by VPD Technologies</p>
             </div>
           </div>
         </div>
