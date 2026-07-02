@@ -18,6 +18,7 @@ export default function GrainSalesAdmin() {
   const [filter, setFilter] = useState('all');
   const [showLogModal, setShowLogModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
+  const [paymentDescription, setPaymentDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     farmer_id: '',
@@ -72,12 +73,13 @@ export default function GrainSalesAdmin() {
 
   const handlePayFarmer = (sale) => {
     setSelectedPayment(sale);
+    setPaymentDescription('');
   };
 
   const handleConfirmPayment = async (sale) => {
     setSaving(true);
     try {
-      await api.patch(`/admin/grain-sales/${sale.id}/pay`);
+      await api.patch(`/admin/grain-sales/${sale.id}/pay`, { description: paymentDescription });
       toast.success(t('payment_successful', 'Farmer paid successfully'));
       queryClient.invalidateQueries({ queryKey: ['admin-grain-sales'] });
       generateInvoice(sale);
@@ -316,6 +318,16 @@ export default function GrainSalesAdmin() {
               <div className="p-4 bg-green-50 rounded-lg border border-green-100">
                 <p className="text-green-800 text-sm mb-1">Total Amount to Pay</p>
                 <p className="font-bold text-green-700 text-2xl">₹{(selectedPayment.total_amount || 0).toLocaleString('en-IN')}</p>
+              </div>
+              <div>
+                <label className="label">Reason / Description (Optional)</label>
+                <textarea 
+                  value={paymentDescription} 
+                  onChange={e => setPaymentDescription(e.target.value)} 
+                  placeholder="e.g. Payment for rice procurement" 
+                  className="input-field" 
+                  rows={2} 
+                />
               </div>
             </div>
             <div className="modal-footer">

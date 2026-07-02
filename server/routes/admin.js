@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcryptjs');
 const db = require('../database/db');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 const { validate, validationSchemas, sanitizeInput } = require('../middleware/validation');
@@ -116,6 +117,38 @@ router.get('/farmers', ...isAdmin, async (req, res) => {
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/farmers
+router.post('/farmers', ...isAdmin, validate(validationSchemas.createFarmer), sanitizeInput, async (req, res) => {
+  const { name, phone, password, address, acres_of_land, crop_address } = req.body;
+  try {
+    const { rows: existing } = await db.query('SELECT id FROM users WHERE phone = $1', [phone]);
+    if (existing.length > 0) return res.status(409).json({ error: 'Phone number already registered' });
+
+    const hash = bcrypt.hashSync(password, 10);
+    const { rows } = await db.query(
+      `INSERT INTO users (name, phone, password_hash, role, status, first_login)
+       VALUES ($1, $2, $3, 'farmer', 'active', FALSE) RETURNING id`,
+      [name, phone, hash]
+    );
+    const userId = rows[0].id;
+
+    await db.query(
+      `INSERT INTO farmer_profiles (user_id, address, acres_of_land, crop_address)
+       VALUES ($1, $2, $3, $4)`,
+      [userId, address || null, acres_of_land || 0, crop_address || null]
+    );
+
+    await db.query(
+      `INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address) VALUES ($1, $2, 'farmer', $3, $4, $5)`,
+      [req.user.id, 'Create Farmer', userId, `Admin registered farmer ${name} (${phone})`, req.ip || req.connection?.remoteAddress]
+    );
+
+    res.status(201).json({ message: 'Farmer registered successfully', id: userId });
+  } catch (err) {
+    res.status(500).json({ error: 'Registration failed: ' + err.message });
   }
 });
 
@@ -1141,8 +1174,9 @@ router.patch('/grain-sales/:id', ...isAdmin, async (req, res) => {
 });
 
 // PATCH /api/admin/grain-sales/:id/pay
-router.patch('/grain-sales/:id/pay', ...isAdmin, async (req, res) => {
+router.patch('/grain-sales/:id/pay', ...isAdmin, validate(validationSchemas.processPayment), sanitizeInput, async (req, res) => {
   try {
+    const { description: customDescription } = req.body;
     const { rows: saleRows } = await db.query('SELECT * FROM grain_sales WHERE id = $1', [req.params.id]);
     if (saleRows.length === 0) return res.status(404).json({ error: 'Sale not found' });
     const sale = saleRows[0];
@@ -1155,7 +1189,7 @@ router.patch('/grain-sales/:id/pay', ...isAdmin, async (req, res) => {
     let tx;
     if (txRows.length === 0) {
       // Create a new completed transaction
-      const description = `Payment for ${sale.grain_type} procurement`;
+      const description = customDescription || `Payment for ${sale.grain_type} procurement`;
       const { rows: newTxRows } = await db.query(
         `INSERT INTO transactions (reference_type, reference_id, farmer_id, amount, direction, status, description)
          VALUES ('grain_sale', $1, $2, $3, 'credit', 'completed', $4) RETURNING id`,
@@ -1169,7 +1203,9 @@ router.patch('/grain-sales/:id/pay', ...isAdmin, async (req, res) => {
       };
     } else {
       tx = txRows[0];
-      await db.query("UPDATE transactions SET status = 'completed' WHERE id = $1", [tx.id]);
+      const finalDescription = customDescription || tx.description;
+      await db.query("UPDATE transactions SET status = 'completed', description = $1 WHERE id = $2", [finalDescription, tx.id]);
+      tx.description = finalDescription;
     }
 
     await db.query("UPDATE grain_sales SET status = 'paid', updated_at = now() WHERE id = $1", [req.params.id]);
@@ -1282,6 +1318,21 @@ router.patch('/managers/:id', authMiddleware, requireRole('super_admin'), valida
       [req.user.id, status === 'active' ? 'Activate Manager' : 'Deactivate Manager', req.params.id, `Manager status changed to ${status}`, req.ip || req.connection?.remoteAddress]
     );
     res.json({ message: 'Manager updated' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/transactions
+router.get('/transactions', ...isAdmin, async (req, res) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT t.*, u.name as farmer_name, u.phone
+      FROM transactions t
+      LEFT JOIN users u ON u.id = t.farmer_id
+      ORDER BY t.created_at DESC
+    `);
+    res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

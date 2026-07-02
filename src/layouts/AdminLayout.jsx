@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Users, Package, Warehouse, BarChart2,
   Calendar, MapPin, TrendingUp, Wheat, LogOut, Menu, X,
-  Globe, Shield, Leaf, User, FileText
+  Globe, Shield, Leaf, User, FileText, DollarSign
 } from 'lucide-react';
 import NotificationCenter from '../components/shared/NotificationCenter';
 import LiveMarketRatesWidget from '../components/shared/LiveMarketRatesWidget';
@@ -42,6 +42,7 @@ export default function AdminLayout() {
     { to: `${basePath}/reports`, icon: <BarChart2 size={18} />, label: t('reports'), roles: ['manager', 'super_admin'] },
     { to: `${basePath}/market-rates`, icon: <TrendingUp size={18} />, label: t('market_rates'), roles: ['manager', 'super_admin'] },
     { to: `${basePath}/grain-sales`, icon: <Wheat size={18} />, label: t('grain_sales'), roles: ['super_admin'] },
+    { to: `${basePath}/credits`, icon: <DollarSign size={18} />, label: t('credits') || 'Credits', roles: ['manager', 'super_admin'] },
     { to: `${basePath}/event-logs`, icon: <FileText size={18} />, label: t('event_logs'), roles: ['super_admin'] },
     { to: `${basePath}/profile`, icon: <User size={18} />, label: t('profile_settings'), roles: ['manager', 'super_admin'] },
     { to: `/admin/dashboard`, icon: <Shield size={18} />, label: t('super_admin_portal'), roles: ['super_admin'] },
