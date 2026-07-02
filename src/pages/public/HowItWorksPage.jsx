@@ -76,7 +76,6 @@ export default function HowItWorksPage() {
                 </button>
               ) : (
                 <>
-                  <Link to="/login" className="text-gray-700 font-semibold text-sm px-4 py-2 rounded-xl hover:bg-gray-100 transition-all">{t('login')}</Link>
                   <Link to="/login" className="flex items-center gap-1.5 bg-primary-600 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-primary-700 transition-all active:scale-95 shadow-md shadow-primary-200">
                     {t('login')} <ArrowRight size={15} />
                   </Link>

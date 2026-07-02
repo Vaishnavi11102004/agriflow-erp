@@ -191,9 +191,6 @@ export default function LandingPage() {
                 </button>
               ) : (
                 <>
-                  <Link to="/login" className="text-gray-700 font-semibold text-sm px-4 py-2 rounded-xl hover:bg-gray-100 transition-all">
-                    {t('login')}
-                  </Link>
                   <Link to="/login" className="flex items-center gap-1.5 bg-primary-600 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-primary-700 transition-all active:scale-95 shadow-md shadow-primary-200">
                     {t('login')} <ArrowRight size={15} />
                   </Link>
@@ -662,10 +659,7 @@ export default function LandingPage() {
           <h2 className="text-3xl sm:text-4xl font-black mb-4">{t('start_journey')}</h2>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/login"
-              className="flex items-center justify-center gap-2 bg-amber-400 text-gray-900 px-8 py-4 rounded-2xl font-bold text-base hover:bg-amber-300 active:scale-95 transition-all shadow-lg">
-              {t('register_free')} <ArrowRight size={18} />
-            </Link>
+            
             <Link to="/login"
               className="flex items-center justify-center gap-2 bg-white/15 border border-white/30 text-white px-8 py-4 rounded-2xl font-bold text-base hover:bg-white/25 active:scale-95 transition-all">
               {t('login')}
