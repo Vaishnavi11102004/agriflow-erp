@@ -17,6 +17,7 @@ export default function GrainSalesAdmin() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [showLogModal, setShowLogModal] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     farmer_id: '',
@@ -69,14 +70,22 @@ export default function GrainSalesAdmin() {
     }
   };
 
-  const handlePayFarmer = async (sale) => {
+  const handlePayFarmer = (sale) => {
+    setSelectedPayment(sale);
+  };
+
+  const handleConfirmPayment = async (sale) => {
+    setSaving(true);
     try {
       await api.patch(`/admin/grain-sales/${sale.id}/pay`);
       toast.success(t('payment_successful', 'Farmer paid successfully'));
       queryClient.invalidateQueries({ queryKey: ['admin-grain-sales'] });
       generateInvoice(sale);
+      setSelectedPayment(null);
     } catch (err) {
       toast.error(err.response?.data?.error || t('action_failed'));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -204,11 +213,9 @@ export default function GrainSalesAdmin() {
                           {s.status === 'received' && (
                             <>
                               <span className="text-xs text-green-600 font-semibold bg-green-50 px-2 py-1 rounded">Crop Received</span>
-                              {isSuperAdmin && (
-                                <button onClick={() => handlePayFarmer(s)} className="btn-sm bg-green-600 hover:bg-green-700 text-white flex items-center gap-1">
-                                  <DollarSign size={14} /> Pay Farmer
-                                </button>
-                              )}
+                              <button onClick={() => handlePayFarmer(s)} className="btn-sm bg-green-600 hover:bg-green-700 text-white flex items-center gap-1">
+                                <DollarSign size={14} /> Pay Farmer
+                              </button>
                             </>
                           )}
                           {s.status === 'paid' && (
@@ -233,7 +240,7 @@ export default function GrainSalesAdmin() {
               <div className="flex items-center gap-3"><div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center"><Wheat size={20} className="text-amber-600" /></div><div><h3 className="font-bold text-gray-800">Log Received Crop</h3></div></div>
               <button onClick={() => setShowLogModal(false)} className="btn-icon"><X size={18} /></button>
             </div>
-            <form onSubmit={handleLogCrop} className="modal-body space-y-4">
+            <form id="log-crop-form" onSubmit={handleLogCrop} className="modal-body space-y-4">
               
               <div>
                 <label className="label">Farmer *</label>
@@ -278,8 +285,43 @@ export default function GrainSalesAdmin() {
             </form>
             <div className="modal-footer">
               <button type="button" onClick={() => setShowLogModal(false)} className="btn-ghost">{t("cancel")}</button>
-              <button type="submit" disabled={saving} className="btn-primary flex items-center gap-2">
+              <button type="submit" form="log-crop-form" disabled={saving} className="btn-primary flex items-center gap-2">
                 {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle size={16} />}{saving ? t('processing') : 'Log Crop'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedPayment && (
+        <div className="modal-overlay" onClick={() => setSelectedPayment(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                  <DollarSign size={20} className="text-green-600" />
+                </div>
+                <div><h3 className="font-bold text-gray-800">Pay Farmer</h3></div>
+              </div>
+              <button onClick={() => setSelectedPayment(null)} className="btn-icon"><X size={18} /></button>
+            </div>
+            <div className="modal-body space-y-4">
+              <h4 className="font-semibold text-gray-700">Bank Details for {selectedPayment.farmer_name}</h4>
+              <div className="bg-gray-50 p-4 rounded-lg space-y-2 text-sm text-gray-600 border border-gray-200">
+                <p><span className="font-medium text-gray-700">Bank Name:</span> {selectedPayment.bank_name || 'N/A'}</p>
+                <p><span className="font-medium text-gray-700">Account Number:</span> {selectedPayment.account_number || 'N/A'}</p>
+                <p><span className="font-medium text-gray-700">IFSC Code:</span> {selectedPayment.ifsc_code || 'N/A'}</p>
+                <p><span className="font-medium text-gray-700">UPI ID:</span> {selectedPayment.upi_id || 'N/A'}</p>
+              </div>
+              <div className="p-4 bg-green-50 rounded-lg border border-green-100">
+                <p className="text-green-800 text-sm mb-1">Total Amount to Pay</p>
+                <p className="font-bold text-green-700 text-2xl">₹{(selectedPayment.total_amount || 0).toLocaleString('en-IN')}</p>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" onClick={() => setSelectedPayment(null)} className="btn-ghost">{t("cancel")}</button>
+              <button onClick={() => handleConfirmPayment(selectedPayment)} disabled={saving} className="btn-primary flex items-center gap-2">
+                {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle size={16} />}{saving ? t('processing') : 'Confirm Payment'}
               </button>
             </div>
           </div>
