@@ -1008,8 +1008,11 @@ router.post('/booking-slots/:id/inspect', ...isAdmin, async (req, res) => {
 router.get('/grain-sales', ...isAdmin, async (req, res) => {
   try {
     const { rows } = await db.query(`
-      SELECT gs.*, u.name as farmer_name FROM grain_sales gs
+      SELECT gs.*, u.name as farmer_name, u.phone as farmer_phone,
+             fp.bank_name, fp.account_number, fp.ifsc_code, fp.upi_id
+      FROM grain_sales gs
       JOIN users u ON u.id = gs.farmer_id
+      LEFT JOIN farmer_profiles fp ON fp.user_id = gs.farmer_id
       ORDER BY gs.created_at DESC
     `);
     res.json(rows);
@@ -1145,13 +1148,30 @@ router.patch('/grain-sales/:id/pay', ...isAdmin, async (req, res) => {
     const sale = saleRows[0];
 
     const { rows: txRows } = await db.query(
-      "SELECT * FROM transactions WHERE reference_type = 'grain_sale' AND reference_id = $1 AND status = 'pending'",
+      "SELECT * FROM transactions WHERE reference_type = 'grain_sale' AND reference_id = $1",
       [req.params.id]
     );
-    if (txRows.length === 0) return res.status(404).json({ error: 'Pending transaction not found for this sale' });
-    const tx = txRows[0];
+    
+    let tx;
+    if (txRows.length === 0) {
+      // Create a new completed transaction
+      const description = `Payment for ${sale.grain_type} procurement`;
+      const { rows: newTxRows } = await db.query(
+        `INSERT INTO transactions (reference_type, reference_id, farmer_id, amount, direction, status, description)
+         VALUES ('grain_sale', $1, $2, $3, 'credit', 'completed', $4) RETURNING id`,
+        [sale.id, sale.farmer_id, sale.total_amount, description]
+      );
+      tx = { 
+        id: newTxRows[0].id, 
+        amount: sale.total_amount, 
+        farmer_id: sale.farmer_id, 
+        description: description 
+      };
+    } else {
+      tx = txRows[0];
+      await db.query("UPDATE transactions SET status = 'completed' WHERE id = $1", [tx.id]);
+    }
 
-    await db.query("UPDATE transactions SET status = 'completed' WHERE id = $1", [tx.id]);
     await db.query("UPDATE grain_sales SET status = 'paid', updated_at = now() WHERE id = $1", [req.params.id]);
     
     await db.query(
