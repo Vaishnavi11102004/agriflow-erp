@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api/axios';
-import { ShoppingCart, X, CheckCircle, Search, Tag, Filter, Download } from 'lucide-react';
+import { ShoppingCart, X, CheckCircle, Search, Tag, Filter, Download, Warehouse } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const GRAIN_PHOTOS = {
@@ -31,6 +31,9 @@ export default function SeedPurchase() {
   const [maxPriceFilter, setMaxPriceFilter] = useState(10000);
   const [selectedCrops, setSelectedCrops] = useState([]);
   const [inStockOnly, setInStockOnly] = useState(false);
+  const [selectedWarehouse, setSelectedWarehouse] = useState('');
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceHtml, setInvoiceHtml] = useState('');
 
   const { data: seeds = [], isLoading: seedsLoading } = useQuery({
     queryKey: ['farmer-seeds'],
@@ -51,12 +54,14 @@ export default function SeedPurchase() {
 
   const openBuy = (seed) => { setSelected(seed); setForm({ quantity_kg: '', payment_method: 'upi', upi_id: '', transaction_id: '', warehouse_id: '' }); setShowModal(true); };
 
+  const quantityExceedsStock = selected && form.quantity_kg && parseFloat(form.quantity_kg) > selected.stock_kg;
+
   const handlePurchase = async (e) => {
     e.preventDefault();
     if (!form.quantity_kg || parseFloat(form.quantity_kg) <= 0) return toast.error(t('enter_valid_quantity'));
+    if (parseFloat(form.quantity_kg) > selected.stock_kg) return toast.error(t('quantity_exceeds_stock', `Quantity exceeds available stock (${selected.stock_kg} kg)`));
     if (form.payment_method === 'upi') {
       if (!/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(form.upi_id)) return toast.error(t('invalid_upi_id'));
-
     }
     setSaving(true);
     try {
@@ -68,12 +73,14 @@ export default function SeedPurchase() {
         transaction_id: form.payment_method === 'upi' ? form.transaction_id : null,
         warehouse_id: form.warehouse_id,
       });
-      toast.success(t('purchase_successful', { invoice: data.invoice_number, amount: data.total_amount.toFixed(2) }));
+      // Build invoice HTML for modal display
+      const invoiceData = { ...data, seed_name: selected.name, variety: selected.variety, price_per_kg: selected.price_per_kg, quantity_kg: parseFloat(form.quantity_kg) };
+      setInvoiceHtml(generateInvoiceHtml(invoiceData));
       setShowModal(false);
+      setShowInvoiceModal(true);
       queryClient.invalidateQueries({ queryKey: ['farmer-seeds'] });
       queryClient.invalidateQueries({ queryKey: ['farmer-seed-purchases'] });
     } catch (err) {
-      // Show detailed validation errors if available
       if (err.response?.data?.details && Array.isArray(err.response.data.details)) {
         const fieldErrors = err.response.data.details.map(d => `${d.field}: ${d.message}`).join(', ');
         toast.error(t('validation_failed', { errors: fieldErrors }));
@@ -83,6 +90,68 @@ export default function SeedPurchase() {
     }
     finally { setSaving(false); }
   };
+
+  const generateInvoiceHtml = (p) => `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Invoice ${p.invoice_number}</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; padding: 40px; color: #333; max-width: 800px; margin: auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #16a34a; padding-bottom: 20px; margin-bottom: 30px; }
+        .logo { font-size: 24px; font-weight: bold; color: #16a34a; }
+        .invoice-title { font-size: 28px; font-weight: bold; color: #1f2937; }
+        .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 40px; }
+        .detail-box { background: #f8fafc; padding: 15px; border-radius: 8px; }
+        .label { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+        .value { font-size: 16px; font-weight: 600; color: #0f172a; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+        th { text-align: left; padding: 12px; background: #f1f5f9; color: #475569; font-size: 13px; text-transform: uppercase; border-radius: 4px; }
+        td { padding: 15px 12px; border-bottom: 1px solid #e2e8f0; font-size: 15px; }
+        .total-row { text-align: right; font-size: 20px; font-weight: bold; color: #16a34a; padding-top: 20px; }
+        .footer { text-align: center; color: #64748b; font-size: 14px; margin-top: 50px; border-top: 1px solid #e2e8f0; padding-top: 20px; }
+        .success-badge { display: inline-block; background: #dcfce7; color: #16a34a; padding: 6px 16px; border-radius: 999px; font-weight: 600; font-size: 14px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div style="text-align: center; margin-bottom: 20px;"><span class="success-badge">✅ Payment Successful</span></div>
+    <div class="header">
+        <div class="logo">🌱 AgriFlow</div>
+        <div class="invoice-title">INVOICE</div>
+    </div>
+    <div class="details-grid">
+        <div class="detail-box">
+            <div class="label">Invoice Number</div>
+            <div class="value">${p.invoice_number}</div>
+            <div class="label" style="margin-top: 10px;">Date</div>
+            <div class="value">${new Date().toLocaleString('en-IN')}</div>
+        </div>
+        <div class="detail-box">
+            <div class="label">Payment Status</div>
+            <div class="value" style="color: #16a34a;">Paid</div>
+            <div class="label" style="margin-top: 10px;">Total Amount</div>
+            <div class="value">₹${p.total_amount?.toLocaleString('en-IN') || (p.quantity_kg * p.price_per_kg).toLocaleString('en-IN')}</div>
+        </div>
+    </div>
+    <table>
+        <thead><tr><th>Seed Item</th><th>Quantity</th><th>Price/kg</th><th style="text-align: right;">Total Amount</th></tr></thead>
+        <tbody>
+            <tr>
+                <td><strong>${p.seed_name}</strong><br><span style="color: #64748b; font-size: 13px;">Variety: ${p.variety || '-'}</span></td>
+                <td>${p.quantity_kg} kg</td>
+                <td>₹${p.price_per_kg}</td>
+                <td style="text-align: right; font-weight: 600;">₹${(p.total_amount || p.quantity_kg * p.price_per_kg).toLocaleString('en-IN')}</td>
+            </tr>
+        </tbody>
+    </table>
+    <div class="total-row">Total Paid: ₹${(p.total_amount || p.quantity_kg * p.price_per_kg).toLocaleString('en-IN')}</div>
+    <div class="footer">
+        Thank you for choosing AgriFlow for your agricultural needs!<br>
+        <small>This is a computer-generated invoice and requires no signature.</small>
+    </div>
+</body>
+</html>`;
 
   const downloadInvoice = (p) => {
     const htmlContent = `
@@ -177,7 +246,8 @@ export default function SeedPurchase() {
     const matchesCrop = selectedCrops.length === 0 || selectedCrops.includes(cropName);
     const matchesPrice = s.price_per_kg <= (maxPriceFilter === 10000 ? maxPrice : maxPriceFilter);
     const matchesStock = !inStockOnly || s.stock_kg > 0;
-    return matchesSearch && matchesCrop && matchesPrice && matchesStock;
+    const matchesWarehouse = !selectedWarehouse || String(s.warehouse_id) === selectedWarehouse;
+    return matchesSearch && matchesCrop && matchesPrice && matchesStock && matchesWarehouse;
   });
 
   const total = form.quantity_kg && selected ? (parseFloat(form.quantity_kg) * selected.price_per_kg).toFixed(2) : '0.00';
@@ -209,7 +279,7 @@ export default function SeedPurchase() {
             <div className="glass-card p-5 space-y-6 sticky top-20">
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-gray-800">{t('filters')}</h3>
-                <button onClick={() => { setMaxPriceFilter(10000); setSelectedCrops([]); setInStockOnly(false); }} className="text-xs text-primary-600 hover:underline">
+                <button onClick={() => { setMaxPriceFilter(10000); setSelectedCrops([]); setInStockOnly(false); setSelectedWarehouse(''); }} className="text-xs text-primary-600 hover:underline">
                   {t('clear_all')}
                 </button>
               </div>
@@ -250,6 +320,20 @@ export default function SeedPurchase() {
                 </div>
               )}
 
+              {/* Warehouse Filter */}
+              {warehouses.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">{t('warehouse', 'Warehouse')}</h4>
+                  <select value={selectedWarehouse} onChange={e => setSelectedWarehouse(e.target.value)}
+                    className="input-field text-sm">
+                    <option value="">{t('all_warehouses', 'All Warehouses')}</option>
+                    {warehouses.map(w => (
+                      <option key={w.id} value={String(w.id)}>{w.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               {/* Availability Filter */}
               <div>
                 <h4 className="text-sm font-semibold text-gray-700 mb-3">{t('availability') || 'Availability'}</h4>
@@ -276,7 +360,7 @@ export default function SeedPurchase() {
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4"><Search size={24} className="text-gray-400" /></div>
                 <h3 className="font-bold text-gray-800 mb-2">{t('no_seeds_found')}</h3>
                 <p className="text-sm text-gray-500 max-w-sm mx-auto">{t('adjust_filters_desc')}</p>
-                <button onClick={() => { setMaxPriceFilter(10000); setSelectedCrops([]); setInStockOnly(false); setSearch(''); }} className="btn-ghost mt-4">
+                <button onClick={() => { setMaxPriceFilter(10000); setSelectedCrops([]); setInStockOnly(false); setSelectedWarehouse(''); setSearch(''); }} className="btn-ghost mt-4">
                   {t('clear_all_filters')}
                 </button>
               </div>
@@ -380,10 +464,12 @@ export default function SeedPurchase() {
               <div>
                 <label className="label">{t('quantity_kg')} *</label>
                 <input type="number" value={form.quantity_kg} onChange={e => setForm(f => ({ ...f, quantity_kg: e.target.value }))}
-                  className="input-field" placeholder={t('quantity_kg_placeholder')} min="1" max={selected.stock_kg} step="0.5" required />
-                <p className="text-xs text-gray-400 mt-1">{t('max_available')}: {selected.stock_kg} kg</p>
+                  className={`input-field ${quantityExceedsStock ? 'border-red-400 ring-1 ring-red-400' : ''}`} placeholder={t('quantity_kg_placeholder')} min="1" max={selected.stock_kg} step="0.5" required />
+                <p className={`text-xs mt-1 ${quantityExceedsStock ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>
+                  {quantityExceedsStock ? `⚠ ${t('quantity_exceeds_stock', 'Quantity exceeds available stock!')} ` : ''}{t('max_available')}: {selected.stock_kg} kg
+                </p>
               </div>
-              {form.quantity_kg && (
+              {form.quantity_kg && !quantityExceedsStock && (
                 <div className="p-4 bg-primary-50 rounded-xl border border-primary-100">
                   <p className="text-sm font-semibold text-gray-700">{t('order_summary')}</p>
                   <div className="flex justify-between mt-2 text-sm">
@@ -435,9 +521,53 @@ export default function SeedPurchase() {
             </form>
             <div className="modal-footer">
               <button onClick={() => setShowModal(false)} className="btn-ghost">{t('cancel')}</button>
-              <button onClick={handlePurchase} disabled={saving} className="btn-primary flex items-center gap-2">
+              <button onClick={handlePurchase} disabled={saving || quantityExceedsStock} className={`btn-primary flex items-center gap-2 ${quantityExceedsStock ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle size={16} />}
                 {saving ? t('processing') : `${t('confirm_purchase')} ₹${total}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invoice Modal */}
+      {showInvoiceModal && (
+        <div className="modal-overlay" style={{ zIndex: 9999 }} onClick={() => setShowInvoiceModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                  <CheckCircle size={20} className="text-green-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-800">{t('payment_successful', 'Payment Successful!')}</h3>
+                  <p className="text-xs text-gray-500">{t('invoice_generated', 'Your invoice has been generated')}</p>
+                </div>
+              </div>
+              <button onClick={() => setShowInvoiceModal(false)} className="btn-icon">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-1">
+              <iframe
+                srcDoc={invoiceHtml}
+                title="Invoice"
+                className="w-full border-0 rounded-xl"
+                style={{ minHeight: '600px', height: '100%' }}
+              />
+            </div>
+            <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-100">
+              <button onClick={() => {
+                const blob = new Blob([invoiceHtml], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = 'invoice.html';
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+              }} className="btn-ghost flex items-center gap-2">
+                <Download size={16} /> {t('download', 'Download')}
+              </button>
+              <button onClick={() => setShowInvoiceModal(false)} className="btn-primary flex items-center gap-2">
+                <X size={16} /> {t('close', 'Close')}
               </button>
             </div>
           </div>

@@ -385,6 +385,29 @@ router.patch('/seeds/:id', ...isAdmin, validate(validationSchemas.updateSeed), s
   }
 });
 
+
+// DELETE /api/admin/seeds/:id
+router.delete('/seeds/:id', ...isAdmin, async (req, res) => {
+  try {
+    // Check if seed has any purchases
+    const { rows: purchaseCheck } = await db.query(
+      'SELECT COUNT(*) as c FROM seed_purchases WHERE seed_id = $1',
+      [req.params.id]
+    );
+    if (parseInt(purchaseCheck[0].c) > 0) {
+      return res.status(400).json({ error: 'Cannot delete seed with existing purchases. Deactivate it instead.' });
+    }
+    await db.query('DELETE FROM seeds WHERE id = $1', [req.params.id]);
+    await db.query(
+      `INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address) VALUES ($1, $2, 'seed', $3, $4, $5)`,
+      [req.user.id, 'Delete Seed', req.params.id, `Deleted seed id: ${req.params.id}`, req.ip || req.connection?.remoteAddress]
+    );
+    res.json({ message: 'Seed deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/admin/warehouses
 router.get('/warehouses', ...isAdmin, async (req, res) => {
   try {

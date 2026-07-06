@@ -14,8 +14,8 @@ export default function BookingSlot() {
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    booking_date: '', delivery_address: '',
-    grain_type: 'Rice', warehouse_id: '', quantity_kg: ''
+    grain_sale_id: '', warehouse_id: '', grain_type: '', quantity_kg: '',
+    booking_date: '',
   });
 
   const { data: slots = [], isLoading: slotsLoading } = useQuery({
@@ -35,12 +35,12 @@ export default function BookingSlot() {
   const handleBook = async (e) => {
     e.preventDefault();
     if (capacityWarning) return toast.error(t('insufficient_capacity', { capacity: (available_kg / 1000).toFixed(1) }));
-    if (!form.booking_date || !form.delivery_address || !form.warehouse_id || !form.quantity_kg) return toast.error(t('fill_required'));
+    if (!form.booking_date || !form.warehouse_id || !form.quantity_kg) return toast.error(t('fill_required'));
     setSaving(true);
     try {
       await api.post('/farmer/booking-slot', {
         booking_date: form.booking_date,
-        delivery_address: form.delivery_address,
+        booking_date: form.booking_date,
         grain_type: form.grain_type,
         warehouse_id: parseInt(form.warehouse_id),
         quantity_kg: parseFloat(form.quantity_kg)
@@ -96,7 +96,7 @@ export default function BookingSlot() {
         <div className="table-container">
           <table className="data-table">
             <thead><tr>
-              <th>{t('date')}</th><th>{t('grain_type')}</th><th>{t('quantity')}</th><th>{t('warehouse')}</th><th>{t('delivery_address')}</th><th>{t('status')}</th><th>Actions</th>
+              <th>{t('date')}</th><th>{t('grain_type')}</th><th>{t('quantity')}</th><th>{t('warehouse')}</th><th>{t('status')}</th><th>Actions</th>
             </tr></thead>
             <tbody>
               {slots.length === 0
@@ -107,7 +107,7 @@ export default function BookingSlot() {
                     <td>{s.grain_type}</td>
                     <td>{s.quantity_kg} kg</td>
                     <td><p className="font-medium">{s.warehouse_name}</p></td>
-                    <td className="text-xs">{s.delivery_address}</td>
+
                     <td><span className={`badge ${statusBadge(s.status)}`}>{s.status}</span></td>
                     <td>
                       <button onClick={() => setSelectedSlot(s)} className="p-1.5 rounded-lg bg-gray-100 text-gray-500 hover:text-primary-600 hover:bg-primary-50" title="Details"><Eye size={14} /></button>
@@ -165,11 +165,7 @@ export default function BookingSlot() {
                   )}
                 </div>
               )}
-              <div>
-                <label className="label">{t('delivery_address')} *</label>
-                <input value={form.delivery_address} onChange={e => setForm(f => ({ ...f, delivery_address: e.target.value }))}
-                  className="input-field" placeholder="Pickup/delivery address" required />
-              </div>
+
             </form>
             <div className="modal-footer">
               <button onClick={() => setShowModal(false)} className="btn-ghost">{t('cancel')}</button>
@@ -198,7 +194,7 @@ export default function BookingSlot() {
                 <div><p className="text-xs text-gray-500 uppercase">{t('quantity_upper')}</p><p className="font-medium text-green-600">{selectedSlot.quantity_kg} kg</p></div>
                 <div><p className="text-xs text-gray-500 uppercase">{t('warehouse_upper')}</p><p className="font-medium">{selectedSlot.warehouse_name}</p></div>
                 <div><p className="text-xs text-gray-500 uppercase">{t('status_upper')}</p><span className={`badge ${statusBadge(selectedSlot.status)}`}>{selectedSlot.status}</span></div>
-                <div className="col-span-2"><p className="text-xs text-gray-500 uppercase">{t('delivery_address_upper')}</p><p className="font-medium text-sm">{selectedSlot.delivery_address}</p></div>
+
               </div>
             </div>
           </div>
