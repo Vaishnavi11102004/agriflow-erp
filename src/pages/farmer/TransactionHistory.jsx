@@ -170,7 +170,6 @@ export default function TransactionHistory() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div><h1 className="page-title">{t('transaction_history')}</h1><p className="page-subtitle">{t('transaction_history_desc')}</p></div>
-        <button onClick={downloadCSV} className="btn-secondary flex items-center gap-2"><Download size={16} />{t('export_csv')}</button>
       </div>
 
       {/* Summary */}
