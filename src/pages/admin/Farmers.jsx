@@ -51,19 +51,25 @@ export default function FarmersDirectory() {
     if (registerForm.password.length < 8) return toast.error('Password must be at least 8 characters');
     setRegSaving(true);
     try {
-      // Clean up empty optional fields to avoid validation errors
       const payload = { ...registerForm };
       if (!payload.address) delete payload.address;
       if (!payload.crop_address) delete payload.crop_address;
-      if (!payload.acres_of_land && payload.acres_of_land !== 0) delete payload.acres_of_land;
-      else payload.acres_of_land = parseFloat(payload.acres_of_land);
+      
+      const parsedAcres = parseFloat(payload.acres_of_land);
+      if (isNaN(parsedAcres) || parsedAcres <= 0) {
+        delete payload.acres_of_land;
+      } else {
+        payload.acres_of_land = parsedAcres;
+      }
+
       await api.post('/admin/farmers', payload);
       toast.success('Farmer registered successfully!');
       queryClient.invalidateQueries({ queryKey: ['admin-farmers'] });
       setShowRegisterModal(false);
       setRegisterForm({ name: '', phone: '', password: '', address: '', acres_of_land: '', crop_address: '' });
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Registration failed');
+      const msg = err.response?.data?.details?.[0]?.message || err.response?.data?.error || 'Registration failed';
+      toast.error(msg);
     } finally { setRegSaving(false); }
   };
 
