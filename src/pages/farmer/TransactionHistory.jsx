@@ -45,24 +45,122 @@ export default function TransactionHistory() {
       return;
     }
 
-    const headers = ['Date', 'Type', 'Description', 'UPI ID', 'Transaction ID', 'Invoice No', 'Amount', 'Status'];
-    const rows = filtered.map(tx => [
-      new Date(tx.created_at).toLocaleDateString('en-IN'),
-      tx.direction,
-      `"${(tx.description || '').replace(/"/g, '""')}"`,
-      tx.upi_id || '',
-      tx.transaction_id || '',
-      tx.invoice_number || '',
-      tx.amount,
-      tx.status
-    ]);
-    
-    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const periodLabel = {
+      'all': 'All Time',
+      '1week': 'Last 1 Week',
+      '1month': 'Last 1 Month',
+      '6weeks': 'Last 6 Weeks',
+      '3months': 'Last 3 Months',
+      '6months': 'Last 6 Months',
+    }[timeFilter] || 'All Time';
+
+    const filteredCredit = filtered.filter(t => t.direction === 'credit').reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+    const filteredDebit = filtered.filter(t => t.direction === 'debit').reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+
+    const tableRows = filtered.map(tx => `
+      <tr>
+        <td>${new Date(tx.created_at).toLocaleDateString('en-IN')}</td>
+        <td><span class="badge ${tx.direction === 'credit' ? 'badge-credit' : 'badge-debit'}">${tx.direction === 'credit' ? '↑ Credit' : '↓ Debit'}</span></td>
+        <td>${tx.description || '-'}</td>
+        <td>${tx.upi_id || '-'}</td>
+        <td style="font-family: monospace; font-size: 11px;">${tx.transaction_id || '-'}</td>
+        <td>${tx.invoice_number || '-'}</td>
+        <td style="font-weight: 700; color: ${tx.direction === 'credit' ? '#16a34a' : '#dc2626'};">
+          ${tx.direction === 'credit' ? '+' : '-'}₹${parseFloat(tx.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+        </td>
+        <td><span class="badge ${tx.status === 'completed' ? 'badge-success' : tx.status === 'failed' ? 'badge-failed' : 'badge-pending'}">${tx.status}</span></td>
+      </tr>
+    `).join('');
+
+    const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Transaction Report — AgriFlow ERP</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', 'Inter', system-ui, sans-serif; padding: 40px; color: #1e293b; background: #fff; max-width: 1100px; margin: auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #16a34a; padding-bottom: 20px; margin-bottom: 30px; }
+        .logo { font-size: 26px; font-weight: 800; color: #16a34a; letter-spacing: -0.5px; }
+        .logo span { color: #1e293b; }
+        .report-meta { text-align: right; }
+        .report-meta h2 { font-size: 22px; font-weight: 700; color: #334155; }
+        .report-meta p { font-size: 12px; color: #64748b; margin-top: 4px; }
+        .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 30px; }
+        .summary-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; text-align: center; }
+        .summary-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; font-weight: 600; margin-bottom: 8px; }
+        .summary-card .value { font-size: 24px; font-weight: 800; }
+        .summary-card .value.green { color: #16a34a; }
+        .summary-card .value.red { color: #dc2626; }
+        .summary-card .value.blue { color: #2563eb; }
+        .summary-card .value.purple { color: #7c3aed; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead th { background: #f1f5f9; text-align: left; padding: 12px 14px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; font-weight: 700; border-bottom: 2px solid #e2e8f0; }
+        tbody td { padding: 11px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        tbody tr:hover { background: #f8fafc; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: capitalize; }
+        .badge-credit { background: #dcfce7; color: #16a34a; }
+        .badge-debit { background: #fee2e2; color: #dc2626; }
+        .badge-success { background: #dcfce7; color: #15803d; }
+        .badge-pending { background: #fef9c3; color: #a16207; }
+        .badge-failed { background: #fee2e2; color: #b91c1c; }
+        .footer { text-align: center; color: #94a3b8; font-size: 12px; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+        .footer p { margin-bottom: 4px; }
+        @media print { body { padding: 20px; } .summary { grid-template-columns: repeat(4, 1fr); } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">Agri<span>Flow</span> ERP</div>
+        <div class="report-meta">
+            <h2>Transaction Report</h2>
+            <p>Period: ${periodLabel} &nbsp;|&nbsp; Generated: ${new Date().toLocaleString('en-IN')}</p>
+        </div>
+    </div>
+
+    <div class="summary">
+        <div class="summary-card">
+            <div class="label">Total Earned</div>
+            <div class="value green">₹${filteredCredit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">Total Spent</div>
+            <div class="value red">₹${filteredDebit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">Net Balance</div>
+            <div class="value blue">₹${(filteredCredit - filteredDebit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">Transactions</div>
+            <div class="value purple">${filtered.length}</div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th><th>Type</th><th>Description</th><th>UPI ID</th>
+                <th>Transaction ID</th><th>Invoice</th><th>Amount</th><th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${tableRows}
+        </tbody>
+    </table>
+
+    <div class="footer">
+        <p><strong>AgriFlow ERP</strong> — Agricultural Management Platform</p>
+        <p>This is a system-generated report. No signature required.</p>
+    </div>
+</body>
+</html>`;
+
+    const blob = new Blob([htmlContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `transactions_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `AgriFlow_Transactions_${periodLabel.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.html`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -140,7 +238,7 @@ export default function TransactionHistory() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div><h1 className="page-title">{t('transaction_history')}</h1><p className="page-subtitle">{t('transaction_history_desc')}</p></div>
-        <button onClick={downloadCSV} className="btn-secondary flex items-center gap-2"><Download size={16} />{t('export_csv', 'Export CSV')}</button>
+        <button onClick={downloadCSV} className="btn-secondary flex items-center gap-2"><Download size={16} />{t('export_report', 'Export Report')}</button>
       </div>
 
       {/* Summary */}
