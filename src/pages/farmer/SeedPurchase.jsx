@@ -34,6 +34,7 @@ export default function SeedPurchase() {
   const [selectedWarehouse, setSelectedWarehouse] = useState('');
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceHtml, setInvoiceHtml] = useState('');
+  const [historyTimeFilter, setHistoryTimeFilter] = useState('all');
 
   const { data: seeds = [], isLoading: seedsLoading } = useQuery({
     queryKey: ['farmer-seeds'],
@@ -252,6 +253,17 @@ export default function SeedPurchase() {
 
   const total = form.quantity_kg && selected ? (parseFloat(form.quantity_kg) * selected.price_per_kg).toFixed(2) : '0.00';
 
+  const filteredPurchases = purchases.filter(p => {
+    if (historyTimeFilter === 'all') return true;
+    const diffDays = Math.ceil(Math.abs(new Date() - new Date(p.created_at)) / (1000 * 60 * 60 * 24));
+    if (historyTimeFilter === '1week') return diffDays <= 7;
+    if (historyTimeFilter === '1month') return diffDays <= 30;
+    if (historyTimeFilter === '6weeks') return diffDays <= 42;
+    if (historyTimeFilter === '3months') return diffDays <= 90;
+    if (historyTimeFilter === '6months') return diffDays <= 180;
+    return true;
+  });
+
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>;
 
   return (
@@ -412,6 +424,17 @@ export default function SeedPurchase() {
 
       {tab === 'history' && (
         <div className="glass-card overflow-hidden">
+          <div className="p-4 border-b border-gray-100 flex items-center justify-between flex-wrap gap-4">
+             <h3 className="font-bold text-gray-800">{t('purchase_history')}</h3>
+             <select value={historyTimeFilter} onChange={e => setHistoryTimeFilter(e.target.value)} className="input-field max-w-xs text-sm py-2">
+               <option value="all">{t('all_time', 'All Time')}</option>
+               <option value="1week">{t('last_1_week', 'Last 1 Week')}</option>
+               <option value="1month">{t('last_1_month', 'Last 1 Month')}</option>
+               <option value="6weeks">{t('last_6_weeks', 'Last 6 Weeks')}</option>
+               <option value="3months">{t('last_3_months', 'Last 3 Months')}</option>
+               <option value="6months">{t('last_6_months', 'Last 6 Months')}</option>
+             </select>
+          </div>
           <div className="table-container">
             <table className="data-table">
               <thead><tr>
@@ -419,9 +442,9 @@ export default function SeedPurchase() {
                 <th>{t('upi_id')}</th><th>{t('transaction_id')}</th><th>{t('invoice')}</th><th>{t('status')}</th><th>{t('date')}</th>
               </tr></thead>
               <tbody>
-                {purchases.length === 0
-                  ? <tr><td colSpan={9} className="text-center py-10 text-gray-400">{t('no_purchases_yet')}</td></tr>
-                  : purchases.map(p => (
+                {filteredPurchases.length === 0
+                  ? <tr><td colSpan={9} className="text-center py-10 text-gray-400">{t('no_purchases_found', 'No purchases found in this period.')}</td></tr>
+                  : filteredPurchases.map(p => (
                     <tr key={p.id}>
                       <td><p className="font-semibold">{p.seed_name}</p><p className="text-xs text-gray-400">{p.variety}</p></td>
                       <td>{p.quantity_kg} kg</td>
@@ -513,7 +536,12 @@ export default function SeedPurchase() {
                   <div>
                     <label className="label">{t('upi_id')} *</label>
                     <input value={form.upi_id} onChange={e => setForm(f => ({ ...f, upi_id: e.target.value }))}
-                      className="input-field" placeholder="farmer@upi" required />
+                      className="input-field peer" placeholder="farmer@upi" 
+                      pattern="^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$" 
+                      title="Please enter a valid UPI ID (e.g. user@okicici)" required />
+                    <p className="mt-1 text-xs text-red-500 hidden peer-invalid:[&:not(:placeholder-shown)]:block">
+                      {t('invalid_upi_id', 'Invalid UPI ID format')}
+                    </p>
                   </div>
                   
                 </>
