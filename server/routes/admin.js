@@ -301,6 +301,23 @@ router.post('/seeds', ...isAdmin, validate(validationSchemas.createSeed), saniti
   }
 });
 
+// GET /api/admin/seed-purchases
+router.get('/seed-purchases', ...isAdmin, async (req, res) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT sp.*, u.name as farmer_name, u.phone as farmer_phone,
+             s.name as seed_name, s.variety as seed_variety
+      FROM seed_purchases sp
+      LEFT JOIN users u ON u.id = sp.farmer_id
+      LEFT JOIN seeds s ON s.id = sp.seed_id
+      ORDER BY sp.created_at DESC
+    `);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PATCH /api/admin/seed-purchases/:id
 router.patch('/seed-purchases/:id', ...isAdmin, validate(validationSchemas.updateSeedPurchase), sanitizeInput, async (req, res) => {
   const { status } = req.body;

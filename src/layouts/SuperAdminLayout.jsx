@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, Users, UserCheck, LogOut, Menu, X, Globe, Crown, DollarSign } from 'lucide-react';
+import {
+  LayoutDashboard, Users, UserCheck, LogOut, Menu, X, Globe, Crown, DollarSign,
+  Package, Warehouse, Calendar, MapPin, BarChart2, TrendingUp, Wheat, FileText, User, ShoppingBag
+} from 'lucide-react';
 
 const LANGUAGES = [
   { code: 'en', label: 'English', flag: '🇬🇧' },
@@ -23,11 +26,27 @@ export default function SuperAdminLayout() {
   const [showLang, setShowLang] = useState(false);
 
   const navItems = [
+    // Super Admin Section
+    { type: 'header', label: t('super_admin_portal') || 'Super Admin' },
     { to: '/admin/dashboard', icon: <LayoutDashboard size={18} />, label: t('dashboard'), end: true },
     { to: '/admin/dashboard/managers', icon: <UserCheck size={18} />, label: t('manage_admins') },
     { to: '/admin/dashboard/farmers', icon: <Users size={18} />, label: t('farmers') },
     { to: '/admin/dashboard/credits', icon: <DollarSign size={18} />, label: t('credits') || 'Credits' },
-    { to: '/admin/dashboard/operational', icon: <LayoutDashboard size={18} />, label: t('operational_portal') },
+
+    // Operational Section
+    { type: 'header', label: t('operational_portal') || 'Operational Portal' },
+    { to: '/admin/dashboard/op', icon: <LayoutDashboard size={18} />, label: t('op_dashboard') || 'Op. Dashboard', end: true },
+    { to: '/admin/dashboard/op/farmers', icon: <Users size={18} />, label: t('farmers') },
+    { to: '/admin/dashboard/op/seeds', icon: <Package size={18} />, label: t('seeds_inventory') },
+    { to: '/admin/dashboard/op/seed-purchases', icon: <ShoppingBag size={18} />, label: t('seed_purchases') || 'Seed Purchases' },
+    { to: '/admin/dashboard/op/warehouse', icon: <Warehouse size={18} />, label: t('warehouse') },
+    { to: '/admin/dashboard/op/booking-slots', icon: <Calendar size={18} />, label: t('booking_slot') },
+    { to: '/admin/dashboard/op/visits', icon: <MapPin size={18} />, label: t('farm_visits') },
+    { to: '/admin/dashboard/op/reports', icon: <BarChart2 size={18} />, label: t('reports') },
+    { to: '/admin/dashboard/op/market-rates', icon: <TrendingUp size={18} />, label: t('market_rates') },
+    { to: '/admin/dashboard/op/grain-sales', icon: <Wheat size={18} />, label: t('grain_sales') },
+    { to: '/admin/dashboard/op/event-logs', icon: <FileText size={18} />, label: t('event_logs') },
+    { to: '/admin/dashboard/op/profile', icon: <User size={18} />, label: t('profile_settings') },
   ];
 
   // Auto-close sidebar on mobile when navigating
@@ -79,13 +98,22 @@ export default function SuperAdminLayout() {
               </div>
             </div>
           </div>
-          <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-            {navItems.map(item => (
-              <NavLink key={item.to} to={item.to} end={item.end}
-                className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-                {item.icon}<span className="flex-1">{item.label}</span>
-              </NavLink>
-            ))}
+          <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+            {navItems.map((item, idx) => {
+              if (item.type === 'header') {
+                return (
+                  <div key={idx} className="pt-4 pb-1.5 px-3 first:pt-1">
+                    <p className="text-[10px] uppercase tracking-wider text-white/40 font-bold">{item.label}</p>
+                  </div>
+                );
+              }
+              return (
+                <NavLink key={item.to} to={item.to} end={item.end}
+                  className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+                  {item.icon}<span className="flex-1">{item.label}</span>
+                </NavLink>
+              );
+            })}
           </nav>
           <div className="p-3 border-t border-white/10">
             <button onClick={() => { logout(); navigate('/admin'); }}

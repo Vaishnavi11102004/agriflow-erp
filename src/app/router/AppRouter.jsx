@@ -42,6 +42,8 @@ import SuperAdminDashboard from '../../pages/superadmin/Dashboard';
 import ManageAdmins from '../../pages/superadmin/ManageAdmins';
 import AllFarmers from '../../pages/superadmin/AllFarmers';
 
+import SeedPurchases from '../../pages/admin/SeedPurchases';
+
 import NotFound from '../../pages/shared/NotFound';
 
 export default function AppRouter() {
@@ -72,6 +74,7 @@ export default function AppRouter() {
         <Route index element={<AdminDashboard />} />
         <Route path="farmers" element={<FarmersDirectory />} />
         <Route path="seeds" element={<SeedsInventory />} />
+        <Route path="seed-purchases" element={<SeedPurchases />} />
         <Route path="warehouse" element={<WarehouseManagement />} />
         <Route path="reports" element={<AdminReports />} />
         <Route path="booking-slots" element={<AdminBookingSlots />} />
@@ -90,22 +93,21 @@ export default function AppRouter() {
         <Route path="managers" element={<ManageAdmins />} />
         <Route path="farmers" element={<AllFarmers />} />
         <Route path="credits" element={<CreditsAdmin />} />
-      </Route>
-
-      {/* Operational portal for super_admin — distinct URL from /manager/dashboard */}
-      <Route path="/admin/dashboard/operational" element={<ProtectedRoute allowedRoles={['super_admin']}><AdminLayout /></ProtectedRoute>}>
-        <Route index element={<AdminDashboard />} />
-        <Route path="farmers" element={<FarmersDirectory />} />
-        <Route path="seeds" element={<SeedsInventory />} />
-        <Route path="warehouse" element={<WarehouseManagement />} />
-        <Route path="reports" element={<AdminReports />} />
-        <Route path="booking-slots" element={<AdminBookingSlots />} />
-        <Route path="visits" element={<FarmVisits />} />
-        <Route path="market-rates" element={<MarketRates />} />
-        <Route path="grain-sales" element={<GrainSalesAdmin />} />
-        <Route path="credits" element={<CreditsAdmin />} />
-        <Route path="event-logs" element={<EventLogs />} />
-        <Route path="profile" element={<ManagerProfile />} />
+        
+        {/* Operational portal embedded in SuperAdmin */}
+        <Route path="op" element={<AdminDashboard />} />
+        <Route path="op/farmers" element={<FarmersDirectory />} />
+        <Route path="op/seeds" element={<SeedsInventory />} />
+        <Route path="op/seed-purchases" element={<SeedPurchases />} />
+        <Route path="op/warehouse" element={<WarehouseManagement />} />
+        <Route path="op/reports" element={<AdminReports />} />
+        <Route path="op/booking-slots" element={<AdminBookingSlots />} />
+        <Route path="op/visits" element={<FarmVisits />} />
+        <Route path="op/market-rates" element={<MarketRates />} />
+        <Route path="op/grain-sales" element={<GrainSalesAdmin />} />
+        <Route path="op/credits" element={<CreditsAdmin />} />
+        <Route path="op/event-logs" element={<EventLogs />} />
+        <Route path="op/profile" element={<ManagerProfile />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

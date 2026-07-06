@@ -456,31 +456,33 @@ export default function LandingPage() {
                   const cropName = seed.name?.split(' ')[1] || seed.name?.split(' ')[0] || 'default';
                   const photoUrl = GRAIN_PHOTOS[cropName] || GRAIN_PHOTOS.default;
                   return (
-                    <div key={seed.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 overflow-hidden group">
-                      <div className="h-32 bg-gray-100 overflow-hidden relative">
+                    <div key={seed.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 overflow-hidden group flex flex-col">
+                      <div className="h-32 bg-gray-100 overflow-hidden relative flex-shrink-0">
                         <img src={photoUrl} alt={seed.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                         <div className="absolute top-2 right-2 bg-white/90 backdrop-blur text-primary-700 text-xs font-bold px-2.5 py-1 rounded-full shadow-sm">
                           {t('sc_verified')}
                         </div>
                       </div>
-                      <div className="p-4">
+                      <div className="p-4 flex flex-col flex-1">
                         <div className="flex items-start justify-between gap-2 mb-1">
                           <h4 className="font-bold text-gray-900 text-sm leading-tight">{seed.name}</h4>
                           <span className="text-xs font-semibold text-primary-700 bg-primary-50 px-2 py-0.5 rounded-full shrink-0">{t('sc_in_stock')}</span>
                         </div>
                         <p className="text-xs text-gray-400 mb-1">{seed.variety}</p>
                         <p className="text-xs text-gray-500 leading-relaxed mb-3 line-clamp-2">{seed.description}</p>
-                        <div className="flex items-center justify-between mb-3">
-                          <div>
-                            <span className="text-xl font-black text-gray-900">₹{seed.price_per_kg}</span>
-                            <span className="text-gray-400 text-xs">/kg</span>
+                        <div className="mt-auto">
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              <span className="text-xl font-black text-gray-900">₹{seed.price_per_kg}</span>
+                              <span className="text-gray-400 text-xs">/kg</span>
+                            </div>
+                            <span className="text-xs text-gray-400">{seed.stock_kg} {t('sc_kg_left')}</span>
                           </div>
-                          <span className="text-xs text-gray-400">{seed.stock_kg} {t('sc_kg_left')}</span>
+                          <button onClick={() => handleActionClick('buy')}
+                            className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl text-xs font-bold hover:from-amber-600 hover:to-orange-600 transition-all active:scale-95 flex items-center justify-center gap-1.5 group-hover:shadow-md">
+                            <ShoppingBag size={13} /> {t('sc_buy_now')}
+                          </button>
                         </div>
-                        <button onClick={() => handleActionClick('buy')}
-                          className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl text-xs font-bold hover:from-amber-600 hover:to-orange-600 transition-all active:scale-95 flex items-center justify-center gap-1.5 group-hover:shadow-md">
-                          <ShoppingBag size={13} /> {t('sc_buy_now')}
-                        </button>
                       </div>
                     </div>
                   );
@@ -639,16 +641,6 @@ export default function LandingPage() {
               ))}
             </div>
 
-            <div className="mt-20 text-center bg-primary-50 rounded-3xl p-10 border border-primary-100">
-              <h2 className="text-2xl font-black text-gray-900 mb-4">{t('feat_cta_title')}</h2>
-              <p className="text-primary-800/80 mb-8 max-w-xl mx-auto">{t('feat_cta_desc')}</p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link to="/login"
-                  className="flex items-center justify-center gap-2 bg-primary-600 text-white px-8 py-4 rounded-2xl font-bold text-base hover:bg-primary-700 active:scale-95 transition-all shadow-lg shadow-primary-200">
-                  {t('feat_create_account')} <ArrowRight size={18} />
-                </Link>
-              </div>
-            </div>
           </div>
         </div>
       </section>

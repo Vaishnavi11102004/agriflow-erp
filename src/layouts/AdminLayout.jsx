@@ -36,6 +36,7 @@ export default function AdminLayout() {
     { to: `${basePath}`, icon: <LayoutDashboard size={18} />, label: t('dashboard'), end: true, roles: ['manager', 'super_admin'] },
     { to: `${basePath}/farmers`, icon: <Users size={18} />, label: t('farmers'), roles: ['manager', 'super_admin'] },
     { to: `${basePath}/seeds`, icon: <Package size={18} />, label: t('seeds_inventory'), roles: ['manager', 'super_admin'] },
+    { to: `${basePath}/seed-purchases`, icon: <Package size={18} />, label: t('seed_purchases') || 'Seed Purchases', roles: ['manager', 'super_admin'] },
     { to: `${basePath}/warehouse`, icon: <Warehouse size={18} />, label: t('warehouse'), roles: ['manager', 'super_admin'] },
     { to: `${basePath}/booking-slots`, icon: <Calendar size={18} />, label: t('booking_slot'), roles: ['manager', 'super_admin'] },
     { to: `${basePath}/visits`, icon: <MapPin size={18} />, label: t('farm_visits'), roles: ['manager', 'super_admin'] },
