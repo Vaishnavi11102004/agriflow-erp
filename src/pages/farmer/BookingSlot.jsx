@@ -135,7 +135,8 @@ export default function BookingSlot() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="label">{t('grain_type')} *</label>
-                  <select value={form.grain_type} onChange={e => setForm(f => ({ ...f, grain_type: e.target.value }))} className="input-field">
+                  <select value={form.grain_type} onChange={e => setForm(f => ({ ...f, grain_type: e.target.value }))} className="input-field" required>
+                    <option value="" disabled>Select Grain</option>
                     {GRAIN_TYPES.map(g => <option key={g}>{g}</option>)}
                   </select>
                 </div>
@@ -148,7 +149,7 @@ export default function BookingSlot() {
               <div>
                 <label className="label">{t('warehouse')} *</label>
                 <select value={form.warehouse_id} onChange={e => setForm(f => ({ ...f, warehouse_id: e.target.value }))} className="input-field" required>
-                  <option value="">{t('select_warehouse')}</option>
+                  <option value="" disabled>{t('select_warehouse')}</option>
                   {warehouses.map(w => <option key={w.id} value={w.id}>{t('warehouse_available', { name: w.name, capacity: (w.available_kg / 1000).toFixed(0) })}</option>)}
                 </select>
               </div>
@@ -157,10 +158,15 @@ export default function BookingSlot() {
                 <div>
                   <label className="label">{t('quantity_kg')} *</label>
                   <input type="number" value={form.quantity_kg} onChange={e => setForm(f => ({ ...f, quantity_kg: e.target.value }))}
-                    className={`input-field ${capacityWarning ? 'input-error' : ''}`} placeholder={t('quantity_in_kg')} min="1" required />
+                    className={`input-field peer ${capacityWarning ? 'input-error' : ''}`} placeholder={t('quantity_in_kg')} min="1" max={available_kg} required />
                   {capacityWarning && (
                     <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
                       <AlertTriangle size={12} />{t('exceeds_capacity', { capacity: (available_kg / 1000).toFixed(1) })}
+                    </p>
+                  )}
+                  {!capacityWarning && (
+                    <p className="mt-1 text-xs text-red-500 hidden peer-invalid:[&:not(:placeholder-shown)]:block">
+                      Invalid quantity (max {(available_kg || 0).toLocaleString()} kg)
                     </p>
                   )}
                 </div>
