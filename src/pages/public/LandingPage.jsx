@@ -602,12 +602,7 @@ export default function LandingPage() {
               ))}
             </div>
 
-            <div className="flex justify-center mt-20">
-              <Link to="/login"
-                className="flex items-center gap-2 bg-primary-600 text-white px-10 py-5 rounded-2xl font-bold text-lg hover:bg-primary-700 active:scale-95 transition-all shadow-xl shadow-primary-200">
-                {t('hiw_start_journey')} <ArrowRight size={20} />
-              </Link>
-            </div>
+
           </div>
         </div>
       </section>
@@ -645,20 +640,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── CTA BANNER ── */}
-      <section className="py-16 bg-gradient-to-br from-primary-800 to-green-900 text-white">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-3xl sm:text-4xl font-black mb-4">{t('start_journey')}</h2>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            
-            <Link to="/login"
-              className="flex items-center justify-center gap-2 bg-white/15 border border-white/30 text-white px-8 py-4 rounded-2xl font-bold text-base hover:bg-white/25 active:scale-95 transition-all">
-              {t('login')}
-            </Link>
-          </div>
-        </div>
-      </section>
 
       {/* ── FOOTER ── */}
       <footer className="bg-gray-900 text-white py-10">
