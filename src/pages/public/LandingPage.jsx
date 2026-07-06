@@ -459,9 +459,6 @@ export default function LandingPage() {
                     <div key={seed.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 overflow-hidden group flex flex-col">
                       <div className="h-32 bg-gray-100 overflow-hidden relative flex-shrink-0">
                         <img src={photoUrl} alt={seed.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                        <div className="absolute top-2 right-2 bg-white/90 backdrop-blur text-primary-700 text-xs font-bold px-2.5 py-1 rounded-full shadow-sm">
-                          {t('sc_verified')}
-                        </div>
                       </div>
                       <div className="p-4 flex flex-col flex-1">
                         <div className="flex items-start justify-between gap-2 mb-1">
