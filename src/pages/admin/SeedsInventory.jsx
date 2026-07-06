@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api/axios';
 import { useAuth } from '../../context/AuthContext';
-import { Package, Plus, X, CheckCircle, Edit, Search } from 'lucide-react';
+import { Package, Plus, X, CheckCircle, Edit, Search, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function SeedsInventory() {
@@ -25,6 +25,17 @@ export default function SeedsInventory() {
 
   const openAdd = () => { setForm({ id: null, name: '', variety: '', price_per_kg: '', stock_kg: '', description: '', is_active: 1 }); setShowModal(true); };
   const openEdit = (s) => { setForm({ ...s }); setShowModal(true); };
+
+  const handleDelete = async (seed) => {
+    if (!window.confirm(`Are you sure you want to delete "${seed.name}"? This action cannot be undone.`)) return;
+    try {
+      await api.delete(`/admin/seeds/${seed.id}`);
+      toast.success(t('seed_deleted', 'Seed deleted successfully'));
+      queryClient.invalidateQueries({ queryKey: ['admin-seeds'] });
+    } catch (err) {
+      toast.error(err.response?.data?.error || t('delete_failed', 'Delete failed'));
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -78,7 +89,10 @@ export default function SeedsInventory() {
                       </td>
                       <td><span className={`badge ${s.is_active ? 'badge-green' : 'badge-gray'}`}>{s.is_active ? t('active') : t('inactive')}</span></td>
                       <td>
-                        <button onClick={() => openEdit(s)} className="p-1.5 rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-100"><Edit size={14} /></button>
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => openEdit(s)} className="p-1.5 rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-100" title={t('edit')}><Edit size={14} /></button>
+                          <button onClick={() => handleDelete(s)} className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100" title={t('delete', 'Delete')}><Trash2 size={14} /></button>
+                        </div>
                       </td>
                     </tr>
                   ))

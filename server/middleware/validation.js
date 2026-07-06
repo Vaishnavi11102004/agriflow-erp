@@ -271,8 +271,7 @@ const validationSchemas = {
       .withMessage('grain_sale_id must be a positive number'),
     commonValidators.date('booking_date'),
     body('delivery_address')
-      .notEmpty()
-      .withMessage('Delivery address is required')
+      .optional({ checkFalsy: true })
       .isLength({ max: 500 })
       .withMessage('Delivery address must be less than 500 characters'),
     body('grain_type')
