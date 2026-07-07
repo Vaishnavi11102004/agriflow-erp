@@ -56,7 +56,7 @@ export default function SuperAdminDashboard() {
         <div className="bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm"><p className="text-xs text-gray-500">{t("system_status")}</p><p className="text-sm font-bold text-green-500 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> All Systems Operational</p></div>
       </div>
 
-      <div className="grid grid-cols-4 gap-2 sm:gap-5 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-5 mb-8">
         <StatCard icon={<Users size={24} className="text-blue-400" />} value={data?.totalFarmers || data?.farmers || 0} label={t("total_farmers")} color="bg-blue-500/20" />
         <StatCard icon={<Shield size={24} className="text-gold-400" />} value={managers?.length || data?.managers || 0} label={t("system_managers")} color="bg-gold-500/20" />
         <StatCard icon={<Activity size={24} className="text-green-400" />} value={data?.visitorToday || data?.totalVisits || 0} label={t("farm_visits_recorded")} color="bg-green-500/20" />
