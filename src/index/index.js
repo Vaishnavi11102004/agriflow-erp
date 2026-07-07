@@ -853,6 +853,15 @@ i18n.use(initReactI18next).init({
   lng: 'en',
   fallbackLng: 'en',
   interpolation: { escapeValue: false },
+  parseMissingKeyHandler: (key) => {
+    if (!key) return key;
+    let formatted = key.replace(/_/g, ' ');
+    formatted = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+    if (formatted.endsWith('.')) {
+      formatted = formatted.slice(0, -1);
+    }
+    return formatted;
+  },
 });
 
 export default i18n;
