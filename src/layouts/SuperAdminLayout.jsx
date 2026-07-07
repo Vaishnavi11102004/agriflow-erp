@@ -30,7 +30,7 @@ export default function SuperAdminLayout() {
     { type: 'header', label: t('super_admin_portal') || 'Super Admin' },
     { to: '/admin/dashboard', icon: <LayoutDashboard size={18} />, label: t('dashboard'), end: true },
     { to: '/admin/dashboard/managers', icon: <UserCheck size={18} />, label: t('manage_admins') },
-    { to: '/admin/dashboard/farmers', icon: <Users size={18} />, label: t('farmers') },
+    { to: '/admin/dashboard/farmers', icon: <Globe size={18} />, label: t('farmers') },
     { to: '/admin/dashboard/credits', icon: <DollarSign size={18} />, label: t('credits') || 'Credits' },
 
     // Operational Section
@@ -114,7 +114,7 @@ export default function SuperAdminLayout() {
             })}
           </nav>
           <div className="p-3 border-t border-white/10">
-            <button onClick={() => { logout(); navigate('/admin'); }}
+            <button onClick={() => { logout(); navigate('/'); }}
               className="sidebar-link w-full text-red-300 hover:text-red-200 hover:bg-red-500/20">
               <LogOut size={18} /><span>Logout</span>
             </button>
