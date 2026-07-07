@@ -110,7 +110,7 @@ export default function AdminLayout() {
             ))}
           </nav>
           <div className="p-3 border-t border-white/10">
-            <button onClick={() => { logout(); navigate('/manager'); }}
+            <button onClick={() => { logout(); navigate('/'); }}
               className="sidebar-link w-full text-red-300 hover:text-red-200 hover:bg-red-500/20">
               <LogOut size={18} /><span>{t('logout')}</span>
             </button>

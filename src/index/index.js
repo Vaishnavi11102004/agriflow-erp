@@ -58,6 +58,11 @@ const en = {
     start_journey: 'Start Your Journey',
     register_free: 'Register Free',
     already_farmer: 'Already a farmer?',
+    need_credentials: 'New to AgriFlow?',
+    need_credentials_desc: 'Get in touch with our team to register your farm and receive your login credentials.',
+    call_us: 'Call Us',
+    visit_us: 'Visit Us',
+    office_address: 'AgriFlow Office, Beside Rythu Bazaar, Main Road, Andhra Pradesh — 522001',
 
     // Portal Pages (Admin / Manager)
     dashboard: 'Dashboard', farm_overview: 'Farm Overview',
@@ -405,6 +410,11 @@ const te = {
     start_journey: 'మీ యాత్ర ప్రారంభించండి',
     register_free: 'ఉచితంగా నమోదు చేసుకోండి',
     already_farmer: 'ఇప్పటికే రైతు అయినారా?',
+    need_credentials: 'AgriFlowకు కొత్తగా వచ్చారా?',
+    need_credentials_desc: 'మీ పొలాన్ని నమోదు చేయడానికి మరియు మీ లాగిన్ ఆధారాలను పొందడానికి మా బృందాన్ని సంప్రదించండి.',
+    call_us: 'కాల్ చేయండి',
+    visit_us: 'మమ్మల్ని సందర్శించండి',
+    office_address: 'AgriFlow కార్యాలయం, రైతు బజార్ పక్కన, మెయిన్ రోడ్, ఆంధ్రప్రదేశ్ — 522001',
 
     dashboard: 'డాష్‌బోర్డ్', farm_overview: 'వ్యవసాయ అవలోకనం',
     crops_cycles: 'పంటలు & చక్రాలు', booking_slot: 'బుకింగ్ స్లాట్',
@@ -669,6 +679,11 @@ const hi = {
     start_journey: 'अपनी यात्रा शुरू करें',
     register_free: 'मुफ्त पंजीकरण',
     already_farmer: 'पहले से किसान हैं?',
+    need_credentials: 'AgriFlow में नए हैं?',
+    need_credentials_desc: 'अपना फार्म पंजीकृत करने और अपने लॉगिन क्रेडेंशियल प्राप्त करने के लिए हमारी टीम से संपर्क करें।',
+    call_us: 'कॉल करें',
+    visit_us: 'हमसे मिलें',
+    office_address: 'AgriFlow कार्यालय, रायतु बाजार के पास, मुख्य सड़क, आंध्र प्रदेश — 522001',
 
     dashboard: 'डैशबोर्ड', farm_overview: 'फार्म अवलोकन',
     crops_cycles: 'फसलें और चक्र', booking_slot: 'बुकिंग स्लॉट',
