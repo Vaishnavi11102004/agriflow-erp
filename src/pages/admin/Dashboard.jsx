@@ -1,3 +1,4 @@
+import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api/axios';
@@ -46,7 +47,7 @@ export default function AdminDashboard() {
     }
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>;
+  if (loading) return <LoadingSpinner />;
 
   const monthlyData = (data?.monthlySales || []).reverse().map(m => ({
     month: m.month?.slice(0, 7) || '', revenue: m.total || 0
@@ -64,7 +65,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* KPI Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-4 gap-2 sm:gap-4 mb-8">
         <StatCard icon={<Users size={22} />} value={data?.totalFarmers || 0} label={t("total_farmers")} color="bg-blue-500" sub={`${data?.activeFarmers || 0}  ${t("active_farmers")}`} />
         <StatCard icon={<Sprout size={22} />} value={data?.activeCrops || 0} label={t("active_crop_cycles")} color="bg-agro-primary" />
         <StatCard icon={<TrendingUp size={22} />} value={`${((data?.procurementMTD || 0)/1000).toFixed(1)}T`} label={t("procurement_mtd")} color="bg-agro-brown" />

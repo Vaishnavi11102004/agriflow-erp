@@ -10,6 +10,7 @@ import FeaturesPage from '../../pages/public/FeaturesPage';
 
 // Auth Pages
 import Login from '../../pages/auth/Login';
+import GetStarted from '../../pages/auth/GetStarted';
 import ForgotPassword from '../../pages/auth/ForgotPassword';
 
 // Farmer Pages
@@ -55,17 +56,17 @@ export default function AppRouter() {
       <Route path="/seeds-catalog" element={<SeedsCatalogPage />} />
       <Route path="/how-it-works" element={<HowItWorksPage />} />
       <Route path="/features" element={<FeaturesPage />} />
+      <Route path="/get-started" element={<GetStarted />} />
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
 
       {/* ===== FARMER PORTAL (/farmer) ===== */}
       <Route path="/farmer" element={<ProtectedRoute allowedRoles={['farmer']}><FarmerLayout /></ProtectedRoute>}>
-        <Route index element={<FarmerDashboard />} />
+        <Route index element={<FarmerProfile />} />
         <Route path="crops" element={<CropManagement />} />
         <Route path="seeds" element={<SeedPurchase />} />
         <Route path="booking-slots" element={<BookingSlot />} />
         <Route path="transactions" element={<TransactionHistory />} />
-        <Route path="profile" element={<FarmerProfile />} />
       </Route>
 
       {/* ===== MANAGER PORTAL (/manager) ===== */}

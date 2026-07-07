@@ -1,3 +1,4 @@
+import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -5,7 +6,7 @@ import api from '../../services/api/axios';
 import { Wheat, Plus, X, CheckCircle, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const GRAIN_TYPES = ['Rice', 'Wheat', 'Maize', 'Cotton', 'Soybean', 'Groundnut', 'Sugarcane'];
+const GRAIN_TYPES = ['Rice', 'Wheat', 'Maize', 'Cotton', 'Groundnut', 'Sugarcane'];
 const GRADES = ['A', 'B', 'C'];
 
 export default function GrainSales() {
@@ -59,7 +60,7 @@ export default function GrainSales() {
 
   const statusBadge = (s) => ({ pending: 'badge-yellow', approved: 'badge-green', rejected: 'badge-red', paid: 'badge-blue' }[s] || 'badge-gray');
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>;
+  if (loading) return <LoadingSpinner />;
 
   return (
     <div className="animate-fade-in">

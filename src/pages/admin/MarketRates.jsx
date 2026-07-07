@@ -6,7 +6,7 @@ import api from '../../services/api/axios';
 import { TrendingUp, Plus, X, CheckCircle, Edit, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const CROP_TYPES = ['Rice', 'Wheat', 'Maize', 'Cotton', 'Soybean', 'Jowar', 'Groundnut', 'Sugarcane'];
+const CROP_TYPES = ['Rice', 'Wheat', 'Maize', 'Cotton', 'Groundnut', 'Sugarcane'];
 const GRADES = ['A', 'B', 'C'];
 
 export default function MarketRates() {

@@ -106,7 +106,7 @@ export default function FarmerDashboard() {
         });
       })()}
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-4 gap-2 sm:gap-4 mb-8">
         <StatCard icon={<Sprout size={22} />} value={data?.crops || 0} label={t('active_fields')} color="bg-primary-500" />
         <StatCard icon={<IndianRupee size={22} />} value={(data?.totalEarned || 0).toLocaleString('en-IN')} label={t('total_earned')} color="bg-green-600" prefix="₹" />
         <StatCard icon={<ShoppingBag size={22} />} value={(data?.totalSpent || 0).toLocaleString('en-IN')} label={t('seed_investment')} color="bg-blue-500" prefix="₹" />
@@ -204,14 +204,14 @@ export default function FarmerDashboard() {
             ? <p className="text-gray-400 text-sm text-center py-4">{t('no_transactions_yet')}</p>
             : data?.recentTx?.map(tx => (
               <div key={tx.id} className="flex items-center gap-3 py-3 border-b last:border-0">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${tx.direction === 'credit' ? 'bg-green-100' : 'bg-red-100'}`}>
+                <div className={`w-9 h-9 shrink-0 rounded-xl flex items-center justify-center text-lg ${tx.direction === 'credit' ? 'bg-green-100' : 'bg-red-100'}`}>
                   {tx.direction === 'credit' ? '↑' : '↓'}
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-800 truncate">{tx.description}</p>
                   <p className="text-xs text-gray-400">{new Date(tx.created_at).toLocaleDateString('en-IN')}</p>
                 </div>
-                <p className={`text-sm font-bold ${tx.direction === 'credit' ? 'text-green-600' : 'text-red-500'}`}>
+                <p className={`text-sm font-bold whitespace-nowrap shrink-0 ${tx.direction === 'credit' ? 'text-green-600' : 'text-red-500'}`}>
                   {tx.direction === 'credit' ? '+' : '-'}₹{tx.amount.toLocaleString('en-IN')}
                 </p>
               </div>

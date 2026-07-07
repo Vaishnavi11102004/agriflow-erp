@@ -12,13 +12,12 @@ const LANGUAGES = [
   { code: 'hi', label: 'हिंदी', flag: '🇮🇳' },
 ];
 
-const CROP_ICONS = { Rice: '🌾', Wheat: '🌿', Maize: '🌽', Cotton: '🌸', Soybean: '🫘', default: '🌱' };
+const CROP_ICONS = { Rice: '🌾', Wheat: '🌿', Maize: '🌽', Cotton: '🌸', default: '🌱' };
 const GRAIN_PHOTOS = {
   Rice: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=400',
   Wheat: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&q=80&w=400',
   Maize: 'https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&q=80&w=400',
   Cotton: '/cotton-seeds.png',
-  Soybean: '/soybean-seeds.png',
   Sugarcane: 'https://images.unsplash.com/photo-1560493676-04071c5f467b?auto=format&fit=crop&q=80&w=400',
   Groundnut: 'https://images.unsplash.com/photo-1567892737950-30c4db37cd89?auto=format&fit=crop&q=80&w=400',
   default: 'https://images.unsplash.com/photo-1515942400420-2b98fed1f515?auto=format&fit=crop&q=80&w=400'
@@ -54,10 +53,13 @@ export default function SeedsCatalogPage() {
     }
   };
 
-  const filtered = seeds.filter(s =>
-    s.name?.toLowerCase().includes(search.toLowerCase()) ||
-    s.variety?.toLowerCase().includes(search.toLowerCase())
-  );
+  const EXCLUDED_SEEDS = ['soybean', 'jowar', 'abcd'];
+  const filtered = seeds.filter(s => {
+    const name = s.name?.toLowerCase() || '';
+    if (EXCLUDED_SEEDS.some(ex => name.includes(ex))) return false;
+    return name.includes(search.toLowerCase()) ||
+           s.variety?.toLowerCase().includes(search.toLowerCase());
+  });
 
   return (
     <div className="min-h-screen bg-white font-inter">
@@ -190,37 +192,39 @@ export default function SeedsCatalogPage() {
               <p className="text-lg font-medium">{seeds.length === 0 ? t('sc_no_seeds') : t('sc_no_match')}</p>
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
               {filtered.map((seed) => {
                 const cropName = seed.name?.split(' ')[1] || seed.name?.split(' ')[0] || 'default';
                 const photoUrl = GRAIN_PHOTOS[cropName] || GRAIN_PHOTOS.default;
                 return (
-                  <div key={seed.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 overflow-hidden group">
-                    <div className="h-32 bg-gray-100 overflow-hidden relative">
+                  <div key={seed.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 overflow-hidden group flex flex-col">
+                    <div className="h-24 sm:h-32 bg-gray-100 overflow-hidden relative flex-shrink-0">
                       <img src={photoUrl} alt={seed.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                     </div>
-                    <div className="p-4">
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <h3 className="font-bold text-gray-900 text-sm leading-tight">{seed.name}</h3>
-                      <span className="text-xs font-semibold text-primary-700 bg-primary-50 px-2 py-0.5 rounded-full shrink-0">{t('sc_in_stock')}</span>
-                    </div>
-                    <p className="text-xs text-gray-400 mb-1">{seed.variety}</p>
-                    <p className="text-xs text-gray-500 leading-relaxed mb-3 line-clamp-2">{seed.description}</p>
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <span className="text-xl font-black text-gray-900">₹{seed.price_per_kg}</span>
-                        <span className="text-gray-400 text-xs">/kg</span>
+                    <div className="p-3 sm:p-4 flex flex-col flex-1">
+                      <div className="flex flex-col sm:flex-row items-start sm:justify-between gap-1 sm:gap-2 mb-1">
+                        <h3 className="font-bold text-gray-900 text-[10px] sm:text-sm leading-tight">{seed.name}</h3>
+                        <span className="text-[10px] sm:text-xs font-semibold text-primary-700 bg-primary-50 px-1.5 sm:px-2 py-0.5 rounded-full shrink-0">{t('sc_in_stock')}</span>
                       </div>
-                      <span className="text-xs text-gray-400">{seed.stock_kg} {t('sc_kg_left')}</span>
+                      <p className="text-[10px] sm:text-xs text-gray-400 mb-1">{seed.variety}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-500 leading-relaxed mb-2 sm:mb-3 line-clamp-2 flex-1">{seed.description}</p>
+                      <div className="mt-auto">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 sm:mb-3 gap-1">
+                          <div>
+                            <span className="text-sm sm:text-xl font-black text-gray-900">₹{seed.price_per_kg}</span>
+                            <span className="text-gray-400 text-[10px] sm:text-xs">/kg</span>
+                          </div>
+                          <span className="text-[10px] sm:text-xs text-gray-400 font-semibold">{seed.stock_kg} {t('sc_kg_left')}</span>
+                        </div>
+                        <button onClick={() => handleActionClick('buy')}
+                          className="w-full py-1.5 sm:py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl text-[10px] sm:text-xs font-bold hover:from-amber-600 hover:to-orange-600 transition-all active:scale-95 flex items-center justify-center gap-1.5 group-hover:shadow-md">
+                          <ShoppingBag size={12} className="sm:w-3 sm:h-3" /> {t('sc_buy_now')}
+                        </button>
+                      </div>
                     </div>
-                    <button onClick={() => handleActionClick('buy')}
-                      className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl text-xs font-bold hover:from-amber-600 hover:to-orange-600 transition-all active:scale-95 flex items-center justify-center gap-1.5 group-hover:shadow-md">
-                      <ShoppingBag size={13} /> {t('sc_buy_now')}
-                    </button>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
             </div>
           )}
         </div>

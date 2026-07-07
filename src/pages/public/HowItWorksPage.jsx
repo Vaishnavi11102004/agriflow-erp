@@ -181,7 +181,7 @@ export default function HowItWorksPage() {
                         </span>
                       </div>
                       <div className="p-5 space-y-2">
-                        {[['Rice', 'A', '₹48/kg'], ['Wheat', 'A', '₹21/kg'], ['Soybean', 'B', '₹36/kg'], ['Maize', 'A', '₹32/kg']].map(([crop, grade, price]) => (
+                        {[['Rice', 'A', '₹48/kg'], ['Wheat', 'A', '₹21/kg'], ['Maize', 'A', '₹32/kg']].map(([crop, grade, price]) => (
                           <div key={crop} className="flex justify-between items-center px-3 py-2 rounded-xl bg-amber-50">
                             <span className="text-sm font-semibold text-gray-700">{crop}</span>
                             <div className="flex items-center gap-2">
