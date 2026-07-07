@@ -201,7 +201,7 @@ router.post('/seed-purchase', ...isFarmer, validate(validationSchemas.seedPurcha
     const purchaseId = purchaseRows[0].id;
 
     await db.query(
-      'UPDATE seeds SET stock_kg = stock_kg - $1, updated_at = now() WHERE id = $2',
+      'UPDATE seeds SET stock_kg = stock_kg - $1, on_hold_kg = COALESCE(on_hold_kg, 0) + $1, updated_at = now() WHERE id = $2',
       [quantity_kg, seed_id]
     );
     

@@ -214,7 +214,12 @@ export default function SeedsCatalogPage() {
                             <span className="text-sm sm:text-xl font-black text-gray-900">₹{seed.price_per_kg}</span>
                             <span className="text-gray-400 text-[10px] sm:text-xs">/kg</span>
                           </div>
-                          <span className="text-[10px] sm:text-xs text-gray-400 font-semibold">{seed.stock_kg} {t('sc_kg_left')}</span>
+                          <div className="text-right">
+                            <span className="text-[10px] sm:text-xs text-gray-400 font-semibold block">{seed.stock_kg} {t('sc_kg_left')}</span>
+                            {Number(seed.on_hold_kg) > 0 && (
+                              <span className="text-[9px] sm:text-[10px] text-amber-600 font-medium block mt-0.5">ON HOLD: {Number(seed.on_hold_kg).toLocaleString()} kg</span>
+                            )}
+                          </div>
                         </div>
                         <button onClick={() => handleActionClick('buy')}
                           className="w-full py-1.5 sm:py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl text-[10px] sm:text-xs font-bold hover:from-amber-600 hover:to-orange-600 transition-all active:scale-95 flex items-center justify-center gap-1.5 group-hover:shadow-md">

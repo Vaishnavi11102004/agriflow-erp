@@ -82,7 +82,7 @@ export default function SeedsInventory() {
         <div className="table-container">
           <table className="data-table">
             <thead><tr>
-              <th>{t("seed_name")}</th><th>{t("variety")}</th><th>{t("price_per_kg")}</th><th>{t("stock_kg")}</th><th>{t("status")}</th><th>{t("actions")}</th>
+              <th>{t("seed_name")}</th><th>{t("variety")}</th><th>{t("price_per_kg")}</th><th>{t("stock_kg")}</th><th>{t("on_hold", "On Hold")}</th><th>{t("status")}</th><th>{t("actions")}</th>
             </tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={6} className="text-center py-10"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto" /></td></tr>
@@ -97,6 +97,9 @@ export default function SeedsInventory() {
                           <span className={s.stock_kg < 500 ? 'text-red-500 font-bold' : ''}>{s.stock_kg.toLocaleString()}</span>
                           {s.stock_kg < 500 && <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded uppercase">{t("low")}</span>}
                         </div>
+                      </td>
+                      <td>
+                        <span className="font-semibold text-amber-600">{Number(s.on_hold_kg || 0).toLocaleString()} kg</span>
                       </td>
                       <td><span className={`badge ${s.is_active ? 'badge-green' : 'badge-gray'}`}>{s.is_active ? t('active') : t('inactive')}</span></td>
                       <td>

@@ -402,6 +402,11 @@ export default function SeedPurchase() {
                           <div className="text-left sm:text-right">
                             <p className="text-[10px] sm:text-xs text-gray-500 hidden sm:block">{t('available')}</p>
                             <p className="text-[10px] sm:text-sm font-semibold text-gray-700">{seed.stock_kg.toLocaleString()} kg left</p>
+                            {Number(seed.on_hold_kg) > 0 && (
+                              <p className="text-[9px] sm:text-[10px] font-medium text-amber-600 mt-0.5">
+                                ON HOLD: {Number(seed.on_hold_kg).toLocaleString()} kg
+                              </p>
+                            )}
                           </div>
                         </div>
                         <div className="w-full h-1 sm:h-1.5 bg-gray-200 rounded-full mb-3 sm:mb-4 overflow-hidden">

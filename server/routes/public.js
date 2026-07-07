@@ -18,7 +18,7 @@ router.get('/market-rates', async (req, res) => {
 router.get('/seeds', async (req, res) => {
   try {
     const { rows } = await db.query(
-      'SELECT id, name, variety, price_per_kg, stock_kg, description FROM seeds WHERE is_active = TRUE ORDER BY name'
+      'SELECT id, name, variety, price_per_kg, stock_kg, on_hold_kg, description FROM seeds WHERE is_active = TRUE ORDER BY name'
     );
     res.json(rows);
   } catch (err) {
