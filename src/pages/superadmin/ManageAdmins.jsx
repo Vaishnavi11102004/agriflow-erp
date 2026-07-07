@@ -4,6 +4,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api/axios';
 import { Shield, Plus, X, CheckCircle, Search, Edit2, Ban, Play } from 'lucide-react';
 import toast from 'react-hot-toast';
+import validators from '../../utils/validators';
+import FieldError from '../../components/shared/FieldError';
 
 export default function ManageAdmins() {
   const { t } = useTranslation();
@@ -12,6 +14,33 @@ export default function ManageAdmins() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [form, setForm] = useState({ id: null, name: '', phone: '', email: '', password: '', status: 'active' });
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const validateField = (field, value) => {
+    let error = null;
+    switch (field) {
+      case 'name': error = validators.name(value); break;
+      case 'phone':
+        if (!value) error = 'Phone Number is required.';
+        else if (!/^\d+$/.test(value)) error = 'Phone Number must contain only digits.';
+        else if (value.length !== 10) error = 'Phone Number must contain exactly 10 digits.';
+        else error = null;
+        break;
+      case 'email': error = validators.email(value); break;
+      case 'password': 
+        if (!form.id && !value) error = 'Password is required';
+        else if (value) error = validators.password(value);
+        break;
+      default: break;
+    }
+    setFieldErrors(prev => ({ ...prev, [field]: error }));
+    return error;
+  };
+
+  const updateForm = (field, value) => {
+    setForm(f => ({ ...f, [field]: value }));
+    if (fieldErrors[field]) validateField(field, value);
+  };
 
   const { data: managers = [], isLoading: loading } = useQuery({
     queryKey: ['superadmin-managers'],
@@ -21,11 +50,20 @@ export default function ManageAdmins() {
     }
   });
 
-  const openAdd = () => { setForm({ id: null, name: '', phone: '', email: '', password: '', status: 'active' }); setShowModal(true); };
-  const openEdit = (m) => { setForm({ ...m, password: '' }); setShowModal(true); };
+  const openAdd = () => { setForm({ id: null, name: '', phone: '', email: '', password: '', status: 'active' }); setFieldErrors({}); setShowModal(true); };
+  const openEdit = (m) => { setForm({ ...m, password: '' }); setFieldErrors({}); setShowModal(true); };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    const nameErr = validateField('name', form.name);
+    const phoneErr = validateField('phone', form.phone);
+    const emailErr = validateField('email', form.email);
+    let passErr = null;
+    if (!form.id || form.password) passErr = validateField('password', form.password);
+    
+    if (nameErr || phoneErr || emailErr || passErr) return;
+    
     setSaving(true);
     try {
       if (form.id) await api.patch(`/admin/managers/${form.id}`, form);
@@ -111,11 +149,27 @@ export default function ManageAdmins() {
               <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Shield size={18} className="text-primary-600" />{form.id ? t('edit_manager') : t('new_manager')}</h3>
               <button onClick={() => setShowModal(false)} className="btn-icon"><X size={20} /></button>
             </div>
-            <form onSubmit={handleSubmit} className="modal-body space-y-4">
-              <div><label className="label">{t("full_name")} *</label><input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="input-field" required /></div>
-              <div><label className="label">{t("phone_login_id")} *</label><input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className="input-field" required maxLength={10} /></div>
-              <div><label className="label">{t("email")}</label><input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className="input-field" /></div>
-              <div><label className="label">{form.id ? t('reset_password') : t('password') + ' *'}</label><input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} className="input-field" placeholder={form.id ? "Leave blank to keep current" : "Required"} required={!form.id} /></div>
+            <form onSubmit={handleSubmit} className="modal-body space-y-4" noValidate>
+              <div>
+                <label className="label">{t("full_name")} *</label>
+                <input value={form.name} onChange={e => updateForm('name', e.target.value)} onBlur={() => validateField('name', form.name)} className={`input-field ${fieldErrors.name ? 'border-red-400 ring-1 ring-red-200' : ''}`} required />
+                <FieldError error={fieldErrors.name} />
+              </div>
+              <div>
+                <label className="label">{t("phone_login_id")} *</label>
+                <input value={form.phone} onChange={e => updateForm('phone', e.target.value)} onBlur={() => validateField('phone', form.phone)} className={`input-field ${fieldErrors.phone ? 'border-red-400 ring-1 ring-red-200' : ''}`} required maxLength={10} />
+                <FieldError error={fieldErrors.phone} />
+              </div>
+              <div>
+                <label className="label">{t("email")}</label>
+                <input type="email" value={form.email || ''} onChange={e => updateForm('email', e.target.value)} onBlur={() => validateField('email', form.email)} className={`input-field ${fieldErrors.email ? 'border-red-400 ring-1 ring-red-200' : ''}`} />
+                <FieldError error={fieldErrors.email} />
+              </div>
+              <div>
+                <label className="label">{form.id ? t('reset_password') : t('password') + ' *'}</label>
+                <input type="password" value={form.password} onChange={e => updateForm('password', e.target.value)} onBlur={() => validateField('password', form.password)} className={`input-field ${fieldErrors.password ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder={form.id ? "Leave blank to keep current" : "Required"} required={!form.id} />
+                <FieldError error={fieldErrors.password} />
+              </div>
               {form.id && (
                 <div><label className="label">{t("status")}</label><select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className="input-field"><option value="active">{t("active")}</option><option value="suspended">Suspended (Inactive)</option></select></div>
               )}

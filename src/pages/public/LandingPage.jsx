@@ -364,10 +364,10 @@ export default function LandingPage() {
                 <p className="text-lg font-medium">{t('mr_no_rates')}</p>
               </div>
             ) : (
-              <div className="flex flex-wrap justify-center gap-5">
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
                 {filteredCrops.map(crop => (
-                  <div key={crop} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden w-80">
-                    <div className="bg-gradient-to-r from-primary-700 to-primary-900 px-5 py-4 flex items-center gap-3">
+                  <div key={crop} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden w-full">
+                    <div className="bg-gradient-to-r from-primary-700 to-primary-900 px-3 py-3 sm:px-5 sm:py-4 flex items-center gap-2 sm:gap-3">
                       <span className={`w-10 h-10 rounded-xl bg-gradient-to-br ${CROP_COLORS[crop] || CROP_COLORS.default} flex items-center justify-center text-white font-black text-lg shadow-lg flex-shrink-0`}>{crop[0]}</span>
                       <div>
                         <h4 className="text-white font-bold text-lg">{crop}</h4>
@@ -429,7 +429,7 @@ export default function LandingPage() {
             </div>
 
             {seedsLoading ? (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
                 {[1, 2, 3, 4].map(i => (
                   <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden animate-pulse">
                     <div className="h-24 bg-gray-200" />
@@ -448,7 +448,7 @@ export default function LandingPage() {
                 <p className="text-lg font-medium">{seeds.length === 0 ? t('sc_no_seeds') : t('sc_no_match')}</p>
               </div>
             ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
                 {filteredSeeds.map((seed) => {
                   const cropName = seed.name?.split(' ')[1] || seed.name?.split(' ')[0] || 'default';
                   const photoUrl = GRAIN_PHOTOS[cropName] || GRAIN_PHOTOS.default;

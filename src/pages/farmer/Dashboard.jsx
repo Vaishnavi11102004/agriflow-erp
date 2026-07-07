@@ -106,7 +106,7 @@ export default function FarmerDashboard() {
         });
       })()}
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-2 sm:gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-8">
         <StatCard icon={<Sprout size={22} />} value={data?.crops || 0} label={t('active_fields')} color="bg-primary-500" />
         <StatCard icon={<IndianRupee size={22} />} value={(data?.totalEarned || 0).toLocaleString('en-IN')} label={t('total_earned')} color="bg-green-600" prefix="₹" />
         <StatCard icon={<ShoppingBag size={22} />} value={(data?.totalSpent || 0).toLocaleString('en-IN')} label={t('seed_investment')} color="bg-blue-500" prefix="₹" />

@@ -65,7 +65,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* KPI Stats Grid */}
-      <div className="grid grid-cols-4 gap-2 sm:gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-8">
         <StatCard icon={<Users size={22} />} value={data?.totalFarmers || 0} label={t("total_farmers")} color="bg-blue-500" sub={`${data?.activeFarmers || 0}  ${t("active_farmers")}`} />
         <StatCard icon={<Sprout size={22} />} value={data?.activeCrops || 0} label={t("active_crop_cycles")} color="bg-agro-primary" />
         <StatCard icon={<TrendingUp size={22} />} value={`${((data?.procurementMTD || 0)/1000).toFixed(1)}T`} label={t("procurement_mtd")} color="bg-agro-brown" />
