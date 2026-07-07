@@ -1,3 +1,4 @@
+import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
@@ -132,7 +133,7 @@ export default function Reports() {
     }
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>;
+  if (loading) return <LoadingSpinner />;
 
   const monthlySales = [...(data?.monthlySales || [])].reverse().map(m => ({ month: m.month?.slice(0, 7) || '', Total: m.total || 0 }));
   const dummyCropData = [ { name: 'Rice', value: 45 }, { name: 'Wheat', value: 25 }, { name: 'Cotton', value: 15 }, { name: 'Maize', value: 10 }, { name: 'Other', value: 5 } ];

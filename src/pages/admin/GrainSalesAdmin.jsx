@@ -6,7 +6,7 @@ import { Wheat, Search, CheckCircle, X, DollarSign, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 
-const GRAIN_TYPES = ['Rice', 'Wheat', 'Maize', 'Cotton', 'Soybean', 'Groundnut', 'Sugarcane'];
+const GRAIN_TYPES = ['Rice', 'Wheat', 'Maize', 'Cotton', 'Groundnut', 'Sugarcane'];
 
 export default function GrainSalesAdmin() {
   const { t } = useTranslation();

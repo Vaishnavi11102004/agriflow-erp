@@ -1,3 +1,4 @@
+import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -5,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api/axios';
 import { User, CreditCard, Save, AlertCircle, CheckCircle, Edit3, Sprout, FileText, UploadCloud, Link as LinkIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
+import FarmerDashboard from './Dashboard';
 
 export default function FarmerProfile() {
   const { t } = useTranslation();
@@ -101,13 +103,20 @@ export default function FarmerProfile() {
     finally { setSaving(false); }
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>;
+  if (loading) return <LoadingSpinner />;
 
   return (
-    <div className="animate-fade-in max-w-2xl">
-      <div className="page-header">
-        <div><h1 className="page-title">{t('profile_settings')}</h1><p className="page-subtitle">{t('profile_settings_desc')}</p></div>
-      </div>
+    <div className="animate-fade-in max-w-5xl mx-auto space-y-8">
+      
+      {/* Farm Overview Dashboard Component */}
+      <FarmerDashboard />
+
+      <hr className="border-gray-200 my-8" />
+
+      <div>
+        <div className="page-header mb-6">
+          <div><h1 className="page-title">{t('profile_settings')}</h1><p className="page-subtitle">{t('profile_settings_desc')}</p></div>
+        </div>
 
       {/* Profile Card */}
       <div className="glass-card p-6 mb-6">
@@ -294,6 +303,7 @@ export default function FarmerProfile() {
             </div>
           ))}
         </div>
+      </div>
       </div>
     </div>
   );

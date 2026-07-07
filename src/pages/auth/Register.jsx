@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import api from '../../services/api/axios';
 import { Leaf, Phone, Lock, User, MapPin, Sprout, CheckCircle, Eye, EyeOff, ArrowRight, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
+import validators from '../../utils/validators';
+import FieldError from '../../components/shared/FieldError';
 
 
 export default function Register() {
@@ -41,6 +43,27 @@ export default function Register() {
       if (/[^A-Za-z0-9]/.test(v)) s++;
       setPwdStrength(s);
     }
+    // Clear error on change
+    if (fieldErrors[k]) setFieldErrors(prev => ({ ...prev, [k]: null }));
+  };
+
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const validateField = (field, value) => {
+    let error = null;
+    switch (field) {
+      case 'name': error = validators.name(value); break;
+      case 'phone': error = validators.phone(value); break;
+      case 'email': error = validators.email(value); break;
+      case 'password': error = validators.password(value); break;
+      case 'confirmPwd': error = validators.confirmPassword(value, form); break;
+      case 'address': error = validators.address(value); break;
+      case 'acres_of_land': error = validators.acres(value); break;
+      case 'crop_address': error = value ? null : 'Crop address is required'; break;
+      case 'otp': error = validators.otp(value); break;
+      default: break;
+    }
+    setFieldErrors(prev => ({ ...prev, [field]: error }));
   };
 
   const sendOTP = async () => {
@@ -173,22 +196,26 @@ export default function Register() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="label">{t('full_name')}</label>
-                  <input value={form.name} onChange={e => update('name', e.target.value)} className="input-field" placeholder={t('your_full_name')} />
+                  <input value={form.name} onChange={e => update('name', e.target.value)} onBlur={() => validateField('name', form.name)} className={`input-field ${fieldErrors.name ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder={t('your_full_name')} />
+                  <FieldError error={fieldErrors.name} />
                 </div>
                 <div className="col-span-2">
                   <label className="label">{t('mobile_number')} *</label>
-                  <input type="tel" value={form.phone} onChange={e => update('phone', e.target.value)} className="input-field" placeholder={t('mobile_placeholder')} maxLength={10} />
+                  <input type="tel" value={form.phone} onChange={e => update('phone', e.target.value)} onBlur={() => validateField('phone', form.phone)} className={`input-field ${fieldErrors.phone ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder={t('mobile_placeholder')} maxLength={10} />
+                  <FieldError error={fieldErrors.phone} />
                 </div>
                 <div className="col-span-2">
                   <label className="label">{t('email_optional')}</label>
-                  <input type="email" value={form.email} onChange={e => update('email', e.target.value)} className="input-field" placeholder={t('your_email')} />
+                  <input type="email" value={form.email} onChange={e => update('email', e.target.value)} onBlur={() => validateField('email', form.email)} className={`input-field ${fieldErrors.email ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder={t('your_email')} />
+                  <FieldError error={fieldErrors.email} />
                 </div>
                 <div>
                   <label className="label">{t('password')} *</label>
                   <div className="relative">
-                    <input type={showPwd ? 'text' : 'password'} value={form.password} onChange={e => update('password', e.target.value)} className="input-field pr-10" placeholder={t('min_8_chars')} />
+                    <input type={showPwd ? 'text' : 'password'} value={form.password} onChange={e => update('password', e.target.value)} onBlur={() => validateField('password', form.password)} className={`input-field pr-10 ${fieldErrors.password ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder={t('min_8_chars')} />
                     <button type="button" onClick={() => setShowPwd(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">{showPwd ? <EyeOff size={16} /> : <Eye size={16} />}</button>
                   </div>
+                  <FieldError error={fieldErrors.password} />
                   {form.password && (
                     <div className="mt-2">
                       <div className="flex gap-1">{[1,2,3,4].map(i => <div key={i} className={`h-1.5 flex-1 rounded-full ${i <= pwdStrength ? strengthColor[pwdStrength] : 'bg-gray-200'}`} />)}</div>
@@ -198,7 +225,8 @@ export default function Register() {
                 </div>
                 <div>
                   <label className="label">{t('confirm_password')}</label>
-                  <input type="password" value={form.confirmPwd} onChange={e => update('confirmPwd', e.target.value)} className={`input-field ${form.confirmPwd && form.confirmPwd !== form.password ? 'input-error' : ''}`} placeholder={t('repeat_password')} />
+                  <input type="password" value={form.confirmPwd} onChange={e => update('confirmPwd', e.target.value)} onBlur={() => validateField('confirmPwd', form.confirmPwd)} className={`input-field ${form.confirmPwd && form.confirmPwd !== form.password ? 'input-error' : ''} ${fieldErrors.confirmPwd ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder={t('repeat_password')} />
+                  <FieldError error={fieldErrors.confirmPwd} />
                 </div>
               </div>
               <button onClick={sendOTP} disabled={loading || !form.name || !form.phone || !form.password || form.password !== form.confirmPwd}
@@ -244,15 +272,18 @@ export default function Register() {
               <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><Sprout size={18} className="text-primary-600" />{t('farm_details')}</h2>
               <div>
                 <label className="label">{t('address')} *</label>
-                <input value={form.address} onChange={e => update('address', e.target.value)} className="input-field" placeholder={t('home_address_placeholder')} />
+                <input value={form.address} onChange={e => update('address', e.target.value)} onBlur={() => validateField('address', form.address)} className={`input-field ${fieldErrors.address ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder={t('home_address_placeholder')} />
+                <FieldError error={fieldErrors.address} />
               </div>
               <div>
                 <label className="label">{t('acres_of_land')} *</label>
-                <input type="number" value={form.acres_of_land} onChange={e => update('acres_of_land', e.target.value)} className="input-field" placeholder={t('eg_5_5')} step="0.5" min="0.1" />
+                <input type="number" value={form.acres_of_land} onChange={e => update('acres_of_land', e.target.value)} onBlur={() => validateField('acres_of_land', form.acres_of_land)} className={`input-field ${fieldErrors.acres_of_land ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder={t('eg_5_5')} step="0.5" min="0.1" />
+                <FieldError error={fieldErrors.acres_of_land} />
               </div>
               <div>
                 <label className="label">{t('crop_address')} *</label>
-                <input value={form.crop_address} onChange={e => update('crop_address', e.target.value)} className="input-field" placeholder={t('crop_address_placeholder')} />
+                <input value={form.crop_address} onChange={e => update('crop_address', e.target.value)} onBlur={() => validateField('crop_address', form.crop_address)} className={`input-field ${fieldErrors.crop_address ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder={t('crop_address_placeholder')} />
+                <FieldError error={fieldErrors.crop_address} />
               </div>
               <p className="text-xs text-gray-500 bg-amber-50 border border-amber-200 rounded-lg p-3">{t('registration_review_msg')}</p>
               <button onClick={handleRegister} disabled={loading} className="btn-primary w-full py-3 flex items-center justify-center gap-2">

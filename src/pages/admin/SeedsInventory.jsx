@@ -13,7 +13,9 @@ export default function SeedsInventory() {
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
-  const [form, setForm] = useState({ id: null, name: '', variety: '', price_per_kg: '', stock_kg: '', description: '', is_active: 1 });
+  const defaultForm = { id: null, name: '', variety: '', price_per_kg: '', stock_kg: '', description: '', is_active: 1 };
+  const [form, setForm] = useState(defaultForm);
+  const [initialForm, setInitialForm] = useState(defaultForm);
 
   const { data: seeds = [], isLoading: loading } = useQuery({
     queryKey: ['admin-seeds'],
@@ -23,8 +25,17 @@ export default function SeedsInventory() {
     }
   });
 
-  const openAdd = () => { setForm({ id: null, name: '', variety: '', price_per_kg: '', stock_kg: '', description: '', is_active: 1 }); setShowModal(true); };
-  const openEdit = (s) => { setForm({ ...s }); setShowModal(true); };
+  const openAdd = () => { setForm(defaultForm); setInitialForm(defaultForm); setShowModal(true); };
+  const openEdit = (s) => { 
+    // Handle is_active being boolean or 1/0
+    const editState = { ...s, is_active: s.is_active ? 1 : 0 };
+    setForm(editState); 
+    setInitialForm(editState); 
+    setShowModal(true); 
+  };
+
+  // Check if form changed
+  const isUnchanged = JSON.stringify(form) === JSON.stringify(initialForm);
 
   const handleDelete = async (seed) => {
     if (!window.confirm(`Are you sure you want to delete "${seed.name}"? This action cannot be undone.`)) return;
@@ -150,7 +161,7 @@ export default function SeedsInventory() {
             </form>
             <div className="modal-footer">
               <button onClick={() => setShowModal(false)} className="btn-ghost">{t("cancel")}</button>
-              <button onClick={handleSubmit} disabled={saving} className="btn-primary flex items-center gap-2">
+              <button onClick={handleSubmit} disabled={saving || isUnchanged} className="btn-primary flex items-center gap-2">
                 {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle size={16} />}
                 {saving ? t('saving') : t('save_seed')}
               </button>

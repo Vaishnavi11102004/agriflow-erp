@@ -5,6 +5,8 @@ import { useAuth } from '../../context/AuthContext';
 import { Leaf, Shield, Crown, Eye, EyeOff, Phone, Lock, ArrowRight, ArrowLeft, AlertTriangle } from 'lucide-react';
 import api from '../../services/api/axios';
 import toast from 'react-hot-toast';
+import validators from '../../utils/validators';
+import FieldError from '../../components/shared/FieldError';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -22,6 +24,16 @@ export default function Login() {
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [remember, setRemember] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const validateField = (field, value) => {
+    let error = null;
+    if (field === 'phone') error = validators.phone(value);
+    if (field === 'password') error = value ? null : 'Password is required';
+    if (field === 'newPwd') error = validators.password(value);
+    if (field === 'confirmPwd') error = value && value !== newPwd ? 'Passwords do not match' : null;
+    setFieldErrors(prev => ({ ...prev, [field]: error }));
+  };
 
   // Force change password state
   const [forceChange, setForceChange] = useState(false);
@@ -184,24 +196,28 @@ export default function Login() {
                 <div className="relative">
                   <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+                    onBlur={() => validateField('phone', phone)}
                     placeholder={t('mobile_placeholder') || 'Enter mobile number'} 
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                    className={`w-full pl-10 pr-4 py-3 bg-gray-50 border ${fieldErrors.phone ? 'border-red-400 ring-1 ring-red-200' : 'border-gray-200'} rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all`}
                     maxLength={10} inputMode="numeric" />
                 </div>
+                <FieldError error={fieldErrors.phone} />
               </div>
               <div>
                 <label className="label block text-sm font-medium text-gray-700 mb-1">{t('password')}</label>
                 <div className="relative">
                   <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input type={showPwd ? 'text' : 'password'} value={password}
-                    onChange={e => setPassword(e.target.value)} 
+                    onChange={e => setPassword(e.target.value)}
+                    onBlur={() => validateField('password', password)}
                     placeholder={t('password_placeholder') || 'Enter password'}
-                    className="w-full pl-10 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" />
+                    className={`w-full pl-10 pr-10 py-3 bg-gray-50 border ${fieldErrors.password ? 'border-red-400 ring-1 ring-red-200' : 'border-gray-200'} rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all`} />
                   <button type="button" onClick={() => setShowPwd(v => !v)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1">
                     {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
+                <FieldError error={fieldErrors.password} />
               </div>
 
               <div className="flex items-center justify-between mt-4">

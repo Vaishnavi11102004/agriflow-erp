@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
@@ -41,7 +41,6 @@ export default function FarmerLayout() {
     { to: '/farmer/seeds', icon: <ShoppingCart size={18} />, label: t('seed_purchase') },
     { to: '/farmer/booking-slots', icon: <Calendar size={18} />, label: t('booking_slot') },
     { to: '/farmer/transactions', icon: <History size={18} />, label: t('transaction_history') },
-    { to: '/farmer/profile', icon: <User size={18} />, label: t('profile_settings') },
   ];
 
   useEffect(() => {
@@ -106,12 +105,10 @@ export default function FarmerLayout() {
       )}
 
       {/* Sidebar
-          Mobile  → fixed overlay drawer that slides in from left
-          Desktop → relative flex element that collapses to w-0 */}
+          Desktop only → relative flex element */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 transition-transform duration-300
-        md:relative md:z-auto md:flex-shrink-0 md:overflow-hidden md:transition-all md:duration-300
-        ${sidebarOpen ? 'translate-x-0 md:w-64' : '-translate-x-full md:w-0 md:translate-x-0'}
+        hidden md:flex flex-col relative z-auto flex-shrink-0 overflow-hidden transition-all duration-300
+        ${sidebarOpen ? 'w-64' : 'w-0'}
       `}>
         <div className="w-64 h-full bg-gradient-to-b from-agro-green to-agro-dark flex flex-col shadow-green overflow-y-auto">
           {/* Logo */}
@@ -161,12 +158,21 @@ export default function FarmerLayout() {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0 pb-16 md:pb-0">
         {/* Topbar */}
         <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center gap-3 flex-shrink-0 shadow-sm z-30">
-          <button onClick={() => setSidebarOpen(v => !v)} className="btn-icon flex-shrink-0">
+          <button onClick={() => setSidebarOpen(v => !v)} className="btn-icon flex-shrink-0 hidden md:flex">
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
+          
+          {/* Mobile Logo */}
+          <div className="md:hidden flex items-center gap-2 flex-1 min-w-0">
+            <div className="w-8 h-8 bg-agro-green rounded-lg flex items-center justify-center flex-shrink-0">
+              <Leaf className="text-white" size={16} />
+            </div>
+            <h2 className="text-gray-900 font-bold text-base truncate">AgriFlow</h2>
+          </div>
+
           <h2 className="text-gray-700 font-semibold text-base flex-1 min-w-0 hidden sm:block truncate">
             {t('app_name')} — {t('farm_overview')}
           </h2>
@@ -193,14 +199,36 @@ export default function FarmerLayout() {
             </div>
 
             <NotificationCenter />
+            
+            {/* Mobile Logout (Header) */}
+            <button onClick={handleLogout} className="md:hidden btn-icon text-red-500 bg-red-50 ml-1">
+              <LogOut size={16} />
+            </button>
           </div>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-3 sm:p-6">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-6 relative">
           <Outlet />
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex items-center justify-around z-40 h-16 shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.05)] safe-area-pb px-1">
+        {navItems.map(item => (
+          <NavLink key={item.to} to={item.to} end={item.end}
+            className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full gap-1 transition-all ${isActive ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'}`}>
+            {({ isActive }) => (
+              <>
+                <div className={`relative flex items-center justify-center w-10 h-8 rounded-full transition-all ${isActive ? 'bg-primary-100/50 scale-110' : ''}`}>
+                  {isActive ? React.cloneElement(item.icon, { size: 20, className: 'text-primary-600 font-bold drop-shadow-sm' }) : React.cloneElement(item.icon, { size: 18 })}
+                </div>
+                <span className={`text-[9px] sm:text-[10px] leading-tight truncate w-full text-center px-1 font-medium ${isActive ? 'font-bold text-primary-700' : ''}`}>{item.label}</span>
+              </>
+            )}
+          </NavLink>
+        ))}
+      </nav>
 
       {/* Chatbot */}
       <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40">

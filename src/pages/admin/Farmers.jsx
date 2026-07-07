@@ -4,6 +4,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api/axios';
 import { Users, Search, Eye, Check, X, ChevronRight, User, Plus, UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
+import validators from '../../utils/validators';
+import FieldError from '../../components/shared/FieldError';
 
 export default function FarmersDirectory() {
   const { t } = useTranslation();
@@ -18,6 +20,26 @@ export default function FarmersDirectory() {
   const [registerForm, setRegisterForm] = useState({
     name: '', phone: '', password: '', address: '', acres_of_land: '', crop_address: ''
   });
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const validateField = (field, value) => {
+    let error = null;
+    switch (field) {
+      case 'name': error = validators.name(value); break;
+      case 'phone': error = validators.phone(value); break;
+      case 'password': error = validators.password(value); break;
+      case 'address': error = validators.address(value); break;
+      case 'acres_of_land': error = validators.acres(value); break;
+      case 'crop_address': error = value ? null : 'Crop address is required'; break;
+      default: break;
+    }
+    setFieldErrors(prev => ({ ...prev, [field]: error }));
+  };
+
+  const updateForm = (field, value) => {
+    setRegisterForm(f => ({ ...f, [field]: value }));
+    if (fieldErrors[field]) setFieldErrors(prev => ({ ...prev, [field]: null }));
+  };
 
   const { data: farmers = [], isLoading: loading } = useQuery({
     queryKey: ['admin-farmers'],
@@ -238,30 +260,36 @@ export default function FarmersDirectory() {
               <div className="modal-body space-y-4">
                 <div>
                   <label className="label">Full Name *</label>
-                  <input value={registerForm.name} onChange={e => setRegisterForm(f => ({ ...f, name: e.target.value }))} className="input-field" placeholder="Farmer full name" />
+                  <input value={registerForm.name} onChange={e => updateForm('name', e.target.value)} onBlur={() => validateField('name', registerForm.name)} className={`input-field ${fieldErrors.name ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder="Farmer full name" />
+                  <FieldError error={fieldErrors.name} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="label">Phone (10 digits) *</label>
-                    <input value={registerForm.phone} onChange={e => setRegisterForm(f => ({ ...f, phone: e.target.value }))} className="input-field" placeholder="9876543210" maxLength={10} inputMode="numeric" />
+                    <input value={registerForm.phone} onChange={e => updateForm('phone', e.target.value)} onBlur={() => validateField('phone', registerForm.phone)} className={`input-field ${fieldErrors.phone ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder="9876543210" maxLength={10} inputMode="numeric" />
+                    <FieldError error={fieldErrors.phone} />
                   </div>
                   <div>
                     <label className="label">Password *</label>
-                    <input type="password" value={registerForm.password} onChange={e => setRegisterForm(f => ({ ...f, password: e.target.value }))} className="input-field" placeholder="Min. 8 characters" />
+                    <input type="password" value={registerForm.password} onChange={e => updateForm('password', e.target.value)} onBlur={() => validateField('password', registerForm.password)} className={`input-field ${fieldErrors.password ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder="Min. 8 characters" />
+                    <FieldError error={fieldErrors.password} />
                   </div>
                 </div>
                 <div>
                   <label className="label">Address</label>
-                  <input value={registerForm.address} onChange={e => setRegisterForm(f => ({ ...f, address: e.target.value }))} className="input-field" placeholder="Village / Town" />
+                  <input value={registerForm.address} onChange={e => updateForm('address', e.target.value)} onBlur={() => validateField('address', registerForm.address)} className={`input-field ${fieldErrors.address ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder="Village / Town" />
+                  <FieldError error={fieldErrors.address} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="label">Acres of Land</label>
-                    <input type="number" value={registerForm.acres_of_land} onChange={e => setRegisterForm(f => ({ ...f, acres_of_land: e.target.value }))} className="input-field" placeholder="e.g. 5" />
+                    <input type="number" value={registerForm.acres_of_land} onChange={e => updateForm('acres_of_land', e.target.value)} onBlur={() => validateField('acres_of_land', registerForm.acres_of_land)} className={`input-field ${fieldErrors.acres_of_land ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder="e.g. 5" />
+                    <FieldError error={fieldErrors.acres_of_land} />
                   </div>
                   <div>
                     <label className="label">Crop Address</label>
-                    <input value={registerForm.crop_address} onChange={e => setRegisterForm(f => ({ ...f, crop_address: e.target.value }))} className="input-field" placeholder="Farm location" />
+                    <input value={registerForm.crop_address} onChange={e => updateForm('crop_address', e.target.value)} onBlur={() => validateField('crop_address', registerForm.crop_address)} className={`input-field ${fieldErrors.crop_address ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder="Farm location" />
+                    <FieldError error={fieldErrors.crop_address} />
                   </div>
                 </div>
               </div>

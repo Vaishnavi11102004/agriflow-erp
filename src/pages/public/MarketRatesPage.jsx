@@ -12,7 +12,7 @@ const LANGUAGES = [
   { code: 'hi', label: 'हिंदी', flag: '🇮🇳' },
 ];
 
-const CROP_COLORS = { Rice: 'from-amber-500 to-yellow-600', Wheat: 'from-yellow-600 to-amber-700', Maize: 'from-orange-400 to-amber-500', Cotton: 'from-sky-400 to-blue-500', Soybean: 'from-lime-500 to-green-600', Jowar: 'from-rose-400 to-red-500', default: 'from-teal-400 to-green-500' };
+const CROP_COLORS = { Rice: 'from-amber-500 to-yellow-600', Wheat: 'from-yellow-600 to-amber-700', Maize: 'from-orange-400 to-amber-500', Cotton: 'from-sky-400 to-blue-500', default: 'from-teal-400 to-green-500' };
 const GRADE_COLOR = { A: 'text-primary-600 bg-primary-50', B: 'text-amber-600 bg-amber-50', C: 'text-orange-600 bg-orange-50' };
 
 export default function MarketRatesPage() {
@@ -45,7 +45,9 @@ export default function MarketRatesPage() {
     }
   };
 
+  const EXCLUDED_CROPS = ['soybean', 'jowar', 'abcd'];
   const grouped = marketRates.reduce((acc, r) => {
+    if (EXCLUDED_CROPS.some(ex => r.crop_type?.toLowerCase().includes(ex))) return acc;
     if (!acc[r.crop_type]) acc[r.crop_type] = {};
     acc[r.crop_type][r.grade] = parseFloat(r.price_per_kg);
     return acc;
@@ -189,29 +191,29 @@ export default function MarketRatesPage() {
               <p className="text-lg font-medium">{t('mr_no_rates')}</p>
             </div>
           ) : (
-            <div className="flex flex-wrap justify-center gap-5">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 justify-items-center">
               {filteredCrops.map(crop => (
-                <div key={crop} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden w-80">
-                  <div className="bg-gradient-to-r from-primary-700 to-primary-900 px-5 py-4 flex items-center gap-3">
-                    <span className={`w-10 h-10 rounded-xl bg-gradient-to-br ${CROP_COLORS[crop] || CROP_COLORS.default} flex items-center justify-center text-white font-black text-lg shadow-lg flex-shrink-0`}>{crop[0]}</span>
+                <div key={crop} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden w-full max-w-sm">
+                  <div className="bg-gradient-to-r from-primary-700 to-primary-900 px-3 sm:px-5 py-3 sm:py-4 flex flex-col sm:flex-row items-center sm:gap-3 text-center sm:text-left">
+                    <span className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br ${CROP_COLORS[crop] || CROP_COLORS.default} flex items-center justify-center text-white font-black text-sm sm:text-lg shadow-lg flex-shrink-0 mb-1 sm:mb-0`}>{crop[0]}</span>
                     <div>
-                      <h3 className="text-white font-bold text-lg">{crop}</h3>
-                      <p className="text-white/60 text-xs">{t('mr_price_per_kg')}</p>
+                      <h3 className="text-white font-bold text-sm sm:text-lg leading-tight">{crop}</h3>
+                      <p className="text-white/60 text-[10px] sm:text-xs">{t('mr_price_per_kg')}</p>
                     </div>
                   </div>
-                  <div className="p-5 space-y-3">
+                  <div className="p-3 sm:p-5 space-y-2 sm:space-y-3">
                     {['A', 'B', 'C'].map(grade => grouped[crop]?.[grade] && (
-                      <div key={grade} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
-                        <div className="flex items-center gap-2">
-                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${GRADE_COLOR[grade]}`}>{t('grade_label')} {grade}</span>
-                          <span className="text-gray-400 text-xs">{grade === 'A' ? t('mr_grade_premium') : grade === 'B' ? t('mr_grade_standard') : t('mr_grade_basic')}</span>
+                      <div key={grade} className="flex flex-col sm:flex-row items-center justify-between p-2 sm:p-3 rounded-xl bg-gray-50 gap-1 sm:gap-0">
+                        <div className="flex items-center gap-1 sm:gap-2">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold ${GRADE_COLOR[grade]}`}>{t('grade_label')} {grade}</span>
+                          <span className="text-gray-400 text-[10px] sm:text-xs hidden sm:inline">{grade === 'A' ? t('mr_grade_premium') : grade === 'B' ? t('mr_grade_standard') : t('mr_grade_basic')}</span>
                         </div>
-                        <span className="text-primary-700 font-black text-lg">₹{grouped[crop][grade].toFixed(0)}</span>
+                        <span className="text-primary-700 font-black text-sm sm:text-lg">₹{grouped[crop][grade].toFixed(0)}</span>
                       </div>
                     ))}
                     <button onClick={() => handleActionClick('sell')}
-                      className="w-full mt-2 py-2.5 border-2 border-primary-600 text-primary-700 rounded-xl text-sm font-semibold hover:bg-primary-50 transition-all flex items-center justify-center gap-1.5">
-                      {t('mr_sell_btn')} {crop} <ChevronRight size={15} />
+                      className="w-full mt-1 sm:mt-2 py-1.5 sm:py-2.5 border-2 border-primary-600 text-primary-700 rounded-xl text-[10px] sm:text-sm font-semibold hover:bg-primary-50 transition-all flex items-center justify-center gap-1">
+                      {t('mr_sell_btn')} {crop} <ChevronRight size={12} className="sm:w-4 sm:h-4" />
                     </button>
                   </div>
                 </div>

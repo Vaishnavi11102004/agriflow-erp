@@ -204,7 +204,7 @@ export default function WarehouseManagement() {
               <div><label className="label">{t("total_capacity_kg")} *</label><input type="number" value={form.total_capacity_kg} onChange={e => setForm(f => ({ ...f, total_capacity_kg: e.target.value }))} className="input-field" min="100" step="100" required /></div>
             </form>
             <div className="modal-footer">
-              <button onClick={() => setShowModal(false)} className="btn-ghost">{t("cancel")}</button>
+              <button onClick={() => { setForm({ name: '', address: '', total_capacity_kg: '' }); setShowModal(false); }} className="btn-ghost">{t("cancel")}</button>
               <button onClick={handleSubmit} disabled={saving} className="btn-primary flex items-center gap-2">
                 {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle size={16} />}{saving ? t('saving') : t('save_warehouse')}
               </button>
@@ -228,8 +228,6 @@ export default function WarehouseManagement() {
                   <option value="Wheat">Wheat</option>
                   <option value="Maize">Maize</option>
                   <option value="Cotton">Cotton</option>
-                  <option value="Soybean">Soybean</option>
-                  <option value="Jowar">Jowar</option>
                   <option value="Groundnut">Groundnut</option>
                   <option value="Sugarcane">Sugarcane</option>
                   <option value="Other Seeds">Other Seeds</option>
@@ -244,7 +242,7 @@ export default function WarehouseManagement() {
               <div><label className="label">{t('quantity_kg', 'Quantity (kg)')} *</label><input type="number" value={invForm.quantity_kg} onChange={e => setInvForm(f => ({ ...f, quantity_kg: e.target.value }))} className="input-field" min="1" step="1" required /></div>
             </form>
             <div className="modal-footer">
-              <button onClick={() => setShowInvModal(false)} className="btn-ghost">{t('cancel')}</button>
+              <button onClick={() => { setInvForm({ grain_type: 'Rice', custom_type: '', quantity_kg: '' }); setShowInvModal(false); }} className="btn-ghost">{t('cancel')}</button>
               <button onClick={handleAddInventory} disabled={saving} className="btn-primary flex items-center gap-2">
                 {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle size={16} />}{saving ? t('saving') : t('add_inventory', 'Add Inventory')}
               </button>
@@ -269,7 +267,7 @@ export default function WarehouseManagement() {
               <div><label className="label">{t('slot_capacity_kg', 'Slot Capacity (kg)')} *</label><input type="number" value={slotForm.total_capacity_kg} onChange={e => setSlotForm(f => ({ ...f, total_capacity_kg: e.target.value }))} className="input-field" min="100" step="100" required /></div>
             </form>
             <div className="modal-footer">
-              <button onClick={() => setShowSlotModal(false)} className="btn-ghost">{t('cancel')}</button>
+              <button onClick={() => { setSlotForm({ slot_date: '', start_time: '', end_time: '', total_capacity_kg: '' }); setShowSlotModal(false); }} className="btn-ghost">{t('cancel')}</button>
               <button onClick={handleCreateSlot} disabled={saving} className="btn-primary flex items-center gap-2">
                 {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle size={16} />}{saving ? t('saving') : t('create_slot', 'Create Slot')}
               </button>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
@@ -68,12 +68,10 @@ export default function SuperAdminLayout() {
       )}
 
       {/* Sidebar
-          Mobile  → fixed overlay drawer
-          Desktop → relative flex collapse */}
+          Desktop only → relative flex element. Mobile → fixed drawer */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 transition-transform duration-300
-        md:relative md:z-auto md:flex-shrink-0 md:overflow-hidden md:transition-all md:duration-300
-        ${sidebarOpen ? 'translate-x-0 md:w-64' : '-translate-x-full md:w-0 md:translate-x-0'}
+        flex flex-col fixed md:relative z-50 md:z-auto h-full flex-shrink-0 overflow-hidden transition-all duration-300
+        ${sidebarOpen ? 'w-64' : 'w-0'}
       `}>
         <div className="w-64 h-full bg-gradient-to-b from-primary-800 to-primary-950 flex flex-col shadow-xl">
           <div className="p-5 border-b border-white/10">
@@ -124,15 +122,24 @@ export default function SuperAdminLayout() {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center gap-3 shadow-sm z-30">
-          <button onClick={() => setSidebarOpen(v => !v)} className="btn-icon flex-shrink-0">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0 pb-16 md:pb-0">
+        <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center gap-3 shadow-sm z-30 flex-shrink-0">
+          <button onClick={() => setSidebarOpen(v => !v)} className="btn-icon flex-shrink-0 flex">
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <div className="flex-1 min-w-0">
-            <span className="text-gray-600 text-sm font-medium hidden sm:block truncate">Super Admin Control Panel</span>
+          
+          {/* Mobile Logo */}
+          <div className="md:hidden flex items-center gap-2 flex-1 min-w-0">
+            <div className="w-8 h-8 bg-gradient-to-br from-yellow-500 to-yellow-700 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Crown className="text-white" size={16} />
+            </div>
+            <h2 className="text-gray-900 font-bold text-base truncate">AgriFlow</h2>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+
+          <div className="flex-1 min-w-0 hidden sm:block">
+            <span className="text-gray-600 text-sm font-medium truncate">Super Admin Control Panel</span>
+          </div>
+          <div className="flex items-center gap-2 ml-auto flex-shrink-0">
             <div className="relative">
               <button onClick={() => setShowLang(v => !v)} className="btn-icon flex items-center gap-1">
                 <Globe size={18} />
@@ -154,10 +161,27 @@ export default function SuperAdminLayout() {
             </div>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-3 sm:p-6">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-6 relative">
           <Outlet />
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex overflow-x-auto z-40 h-16 shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.05)] safe-area-pb hide-scrollbar">
+        {navItems.filter(item => item.type !== 'header' && ['/visits', '/grain-sales', '/booking-slots', '/seed-purchases', '/seeds', '/farmers'].some(p => item.to.endsWith(p))).map(item => (
+          <NavLink key={item.to} to={item.to} end={item.end}
+            className={({ isActive }) => `flex-shrink-0 flex flex-col items-center justify-center w-[72px] h-full gap-1 transition-all ${isActive ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'}`}>
+            {({ isActive }) => (
+              <>
+                <div className={`relative flex items-center justify-center w-10 h-8 rounded-full transition-all ${isActive ? 'bg-primary-100/50 scale-110' : ''}`}>
+                  {isActive ? React.cloneElement(item.icon, { size: 20, className: 'text-primary-600 font-bold drop-shadow-sm' }) : React.cloneElement(item.icon, { size: 18 })}
+                </div>
+                <span className={`text-[9px] leading-tight truncate w-full text-center px-1 font-medium ${isActive ? 'font-bold text-primary-700' : ''}`}>{item.label}</span>
+              </>
+            )}
+          </NavLink>
+        ))}
+      </nav>
     </div>
   );
 }

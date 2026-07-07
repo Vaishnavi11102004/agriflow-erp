@@ -370,7 +370,7 @@ async function seedInitialData() {
     );
     const w1 = w1Rows[0].id;
     const w2 = w2Rows[0].id;
-    const grains = ['Rice', 'Wheat', 'Maize', 'Cotton', 'Soybean'];
+    const grains = ['Rice', 'Wheat', 'Maize', 'Cotton'];
     for (const g of grains) {
       await pool.query(`INSERT INTO warehouse_inventory (warehouse_id, grain_type, quantity_kg) VALUES ($1, $2, 0)`, [w1, g]);
       await pool.query(`INSERT INTO warehouse_inventory (warehouse_id, grain_type, quantity_kg) VALUES ($1, $2, 0)`, [w2, g]);
@@ -386,7 +386,6 @@ async function seedInitialData() {
       ['HD-2967 Wheat', 'Rust Resistant', 38, 3000, 'Disease resistant wheat variety', 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=400&q=80'],
       ['DHM-117 Maize', 'Hybrid', 55, 2000, 'Hybrid maize with 30% higher yield', 'https://images.unsplash.com/photo-1551754655-cd27e38d2076?w=400&q=80'],
       ['LRA-5166 Cotton', 'Long Staple', 120, 1500, 'Long staple cotton for premium fiber', 'https://images.unsplash.com/photo-1605000797499-95a51c5269ae?w=400&q=80'],
-      ['JS-335 Soybean', 'Early Maturing', 62, 2500, 'Fast maturing soybean variety', 'https://images.unsplash.com/photo-1599940824399-b87987ceb72a?w=400&q=80'],
       ['TDN-58 Groundnut', 'High Oil', 85, 1800, 'High oil content groundnut', 'https://images.unsplash.com/photo-1567892336374-39993db3b52f?w=400&q=80'],
       ['CO-5 Sugarcane', 'Disease Free', 25, 4000, 'High sucrose content sugarcane', 'https://images.unsplash.com/photo-1594735933504-7a8536f2c0d1?w=400&q=80'],
     ];
@@ -408,8 +407,6 @@ async function seedInitialData() {
       ['Wheat', 'A', 21.0], ['Wheat', 'B', 18.5], ['Wheat', 'C', 14.0],
       ['Maize', 'A', 18.0], ['Maize', 'B', 15.5], ['Maize', 'C', 12.0],
       ['Cotton', 'A', 65.0], ['Cotton', 'B', 55.0], ['Cotton', 'C', 45.0],
-      ['Soybean', 'A', 42.0], ['Soybean', 'B', 36.0], ['Soybean', 'C', 28.0],
-      ['Jowar', 'A', 20.0], ['Jowar', 'B', 17.0], ['Jowar', 'C', 13.0],
     ];
     for (const r of rates) {
       await pool.query(

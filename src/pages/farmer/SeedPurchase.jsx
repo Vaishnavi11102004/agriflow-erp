@@ -1,3 +1,4 @@
+import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -10,7 +11,6 @@ const GRAIN_PHOTOS = {
   Wheat: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&q=80&w=400',
   Maize: 'https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&q=80&w=400',
   Cotton: '/cotton-seeds.png',
-  Soybean: '/soybean-seeds.png',
   Sugarcane: 'https://images.unsplash.com/photo-1560493676-04071c5f467b?auto=format&fit=crop&q=80&w=400',
   Groundnut: 'https://images.unsplash.com/photo-1567892737950-30c4db37cd89?auto=format&fit=crop&q=80&w=400',
   default: 'https://images.unsplash.com/photo-1515942400420-2b98fed1f515?auto=format&fit=crop&q=80&w=400'
@@ -264,7 +264,7 @@ export default function SeedPurchase() {
     return true;
   });
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>;
+  if (loading) return <LoadingSpinner />;
 
   return (
     <div className="animate-fade-in">
@@ -377,40 +377,40 @@ export default function SeedPurchase() {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-5">
                 {filtered.map(seed => {
                   const cropName = seed.name?.split(' ')[1] || seed.name?.split(' ')[0] || 'default';
                   const photoUrl = GRAIN_PHOTOS[cropName] || GRAIN_PHOTOS.default;
                   return (
                     <div key={seed.id} className="glass-card overflow-hidden hover-lift flex flex-col group">
-                      <div className="h-32 bg-gray-100 overflow-hidden relative">
+                      <div className="h-24 sm:h-32 bg-gray-100 overflow-hidden relative">
                         <img src={photoUrl} alt={seed.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                       </div>
-                      <div className="p-5 flex flex-col flex-1">
-                        <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="p-3 sm:p-5 flex flex-col flex-1">
+                        <div className="flex flex-col sm:flex-row items-start sm:justify-between gap-1 sm:gap-2 mb-2 sm:mb-3">
                           <div>
-                            <h3 className="font-bold text-gray-800 leading-tight">{seed.name}</h3>
-                            <p className="text-xs text-gray-500 mt-0.5">{seed.variety}</p>
+                            <h3 className="font-bold text-gray-800 leading-tight text-xs sm:text-base">{seed.name}</h3>
+                            <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">{seed.variety}</p>
                           </div>
-                          <span className="text-xs font-semibold text-primary-700 bg-primary-50 px-2 py-0.5 rounded-full shrink-0">{t('in_stock')}</span>
+                          <span className="text-[10px] sm:text-xs font-semibold text-primary-700 bg-primary-50 px-1.5 sm:px-2 py-0.5 rounded-full shrink-0">{t('in_stock')}</span>
                         </div>
-                        <p className="text-xs text-gray-500 mb-4 flex-1 leading-relaxed">{seed.description}</p>
-                        <div className="flex items-center justify-between mb-4">
+                        <p className="text-[10px] sm:text-xs text-gray-500 mb-2 sm:mb-4 flex-1 leading-relaxed line-clamp-2">{seed.description}</p>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 sm:mb-4 gap-1">
                           <div>
-                            <p className="text-2xl font-bold text-agro-green">₹{seed.price_per_kg}<span className="text-sm text-gray-400 font-normal">/kg</span></p>
+                            <p className="text-lg sm:text-2xl font-bold text-agro-green">₹{seed.price_per_kg}<span className="text-[10px] sm:text-sm text-gray-400 font-normal">/kg</span></p>
                           </div>
-                          <div className="text-right">
-                            <p className="text-xs text-gray-500">{t('available')}</p>
-                            <p className="text-sm font-semibold text-gray-700">{seed.stock_kg.toLocaleString()} kg</p>
+                          <div className="text-left sm:text-right">
+                            <p className="text-[10px] sm:text-xs text-gray-500 hidden sm:block">{t('available')}</p>
+                            <p className="text-[10px] sm:text-sm font-semibold text-gray-700">{seed.stock_kg.toLocaleString()} kg left</p>
                           </div>
                         </div>
-                        <div className="w-full h-1.5 bg-gray-200 rounded-full mb-4 overflow-hidden">
+                        <div className="w-full h-1 sm:h-1.5 bg-gray-200 rounded-full mb-3 sm:mb-4 overflow-hidden">
                           <div className={`h-full rounded-full ${seed.stock_kg > 1000 ? 'bg-green-500' : seed.stock_kg > 500 ? 'bg-yellow-400' : 'bg-red-400'}`}
                             style={{ width: `${Math.min(100, (seed.stock_kg / 5000) * 100)}%` }} />
                         </div>
                         <button onClick={() => openBuy(seed)} disabled={seed.stock_kg <= 0}
-                          className="btn-primary flex items-center justify-center gap-2 mt-auto">
-                          <ShoppingCart size={16} />{seed.stock_kg > 0 ? t('purchase') : t('out_of_stock')}
+                          className="btn-primary py-1.5 sm:py-2 flex items-center justify-center gap-1 sm:gap-2 mt-auto text-[10px] sm:text-sm">
+                          <ShoppingCart size={14} className="hidden sm:inline" />{seed.stock_kg > 0 ? t('purchase') : t('out_of_stock')}
                         </button>
                       </div>
                     </div>

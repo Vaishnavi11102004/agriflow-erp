@@ -1,3 +1,4 @@
+import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
@@ -232,7 +233,7 @@ export default function TransactionHistory() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>;
+  if (loading) return <LoadingSpinner />;
 
   return (
     <div className="animate-fade-in">

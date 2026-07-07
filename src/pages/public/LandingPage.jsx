@@ -11,21 +11,20 @@ import {
 import api from '../../services/api/axios';
 
 const LANGUAGES = [
-  { code: 'en', label: 'English', flag: '🇬🇧' },
-  { code: 'te', label: 'తెలుగు', flag: '🇮🇳' },
-  { code: 'hi', label: 'हिंदी', flag: '🇮🇳' },
+  { code: 'en', label: 'English' },
+  { code: 'te', label: 'తెలుగు' },
+  { code: 'hi', label: 'हिंदी' },
 ];
 
-const CROP_ICONS = { Rice: '🌾', Wheat: '🌿', Maize: '🌽', Cotton: '🌸', Soybean: '🫘', default: '🌱' };
+const CROP_ICONS = { Rice: '🌾', Wheat: '🌿', Maize: '🌽', Cotton: '🌸', default: '🌱' };
 const GRADE_COLOR = { A: 'text-primary-600 bg-primary-50', B: 'text-amber-600 bg-amber-50', C: 'text-orange-600 bg-orange-50' };
 const SEED_COLORS = ['from-green-400 to-primary-600', 'from-amber-400 to-yellow-600', 'from-blue-400 to-cyan-600', 'from-purple-400 to-violet-600', 'from-rose-400 to-pink-600', 'from-teal-400 to-green-600', 'from-indigo-400 to-blue-600'];
-const CROP_COLORS = { Rice: 'from-amber-500 to-yellow-600', Wheat: 'from-yellow-600 to-amber-700', Maize: 'from-orange-400 to-amber-500', Cotton: 'from-sky-400 to-blue-500', Soybean: 'from-lime-500 to-green-600', Jowar: 'from-rose-400 to-red-500', default: 'from-teal-400 to-green-500' };
+const CROP_COLORS = { Rice: 'from-amber-500 to-yellow-600', Wheat: 'from-yellow-600 to-amber-700', Maize: 'from-orange-400 to-amber-500', Cotton: 'from-sky-400 to-blue-500', default: 'from-teal-400 to-green-500' };
 const GRAIN_PHOTOS = {
   Rice: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=400',
   Wheat: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&q=80&w=400',
   Maize: 'https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&q=80&w=400',
   Cotton: '/cotton-seeds.png',
-  Soybean: '/soybean-seeds.png',
   Sugarcane: 'https://images.unsplash.com/photo-1560493676-04071c5f467b?auto=format&fit=crop&q=80&w=400',
   Groundnut: 'https://images.unsplash.com/photo-1567892737950-30c4db37cd89?auto=format&fit=crop&q=80&w=400',
   default: 'https://images.unsplash.com/photo-1515942400420-2b98fed1f515?auto=format&fit=crop&q=80&w=400'
@@ -98,7 +97,7 @@ export default function LandingPage() {
     if (user) {
       navigate(user.role === 'farmer' ? '/farmer' : '/manager/dashboard');
     } else {
-      navigate('/login', { state: { from: action } });
+      navigate('/get-started', { state: { from: action } });
     }
   };
 
@@ -111,11 +110,14 @@ export default function LandingPage() {
   const cropList = Object.keys(grouped);
   const filteredCrops = activeTab === 'all' ? cropList : cropList.filter(c => c.toLowerCase() === activeTab);
 
-  // Seeds data processing
-  const filteredSeeds = seeds.filter(s =>
-    s.name?.toLowerCase().includes(seedSearch.toLowerCase()) ||
-    s.variety?.toLowerCase().includes(seedSearch.toLowerCase())
-  );
+  // Seeds data processing – exclude removed crops
+  const EXCLUDED_SEEDS = ['soybean', 'jowar', 'abcd'];
+  const filteredSeeds = seeds.filter(s => {
+    const name = s.name?.toLowerCase() || '';
+    if (EXCLUDED_SEEDS.some(ex => name.includes(ex))) return false;
+    return name.includes(seedSearch.toLowerCase()) ||
+      s.variety?.toLowerCase().includes(seedSearch.toLowerCase());
+  });
 
   // Features data
   const features = [
@@ -154,11 +156,10 @@ export default function LandingPage() {
                 <button
                   key={link.id}
                   onClick={() => scrollTo(link.id)}
-                  className={`transition-colors pb-0.5 ${
-                    activeSection === link.id
+                  className={`transition-colors pb-0.5 ${activeSection === link.id
                       ? 'text-primary-700 font-semibold border-b-2 border-primary-600'
                       : 'hover:text-primary-700 border-b-2 border-transparent'
-                  }`}
+                    }`}
                 >
                   {t(link.labelKey)}
                 </button>
@@ -171,14 +172,14 @@ export default function LandingPage() {
               <div className="relative">
                 <button onClick={() => setShowLang(v => !v)} className="btn-icon flex items-center gap-1.5 text-sm font-medium">
                   <Globe size={18} />
-                  <span>{LANGUAGES.find(l => l.code === i18n.language)?.flag}</span>
+                  <span className="hidden sm:inline">{LANGUAGES.find(l => l.code === i18n.language)?.label}</span>
                 </button>
                 {showLang && (
-                  <div className="absolute right-0 top-10 bg-white rounded-xl shadow-lg border border-gray-100 py-2 w-40 z-50">
+                  <div className="absolute right-0 top-10 bg-white rounded-xl shadow-lg border border-gray-100 py-2 w-32 z-50">
                     {LANGUAGES.map(l => (
                       <button key={l.code} onClick={() => changeLang(l.code)}
                         className={`w-full px-4 py-2 text-sm text-left hover:bg-primary-50 flex items-center gap-2 ${i18n.language === l.code ? 'text-primary-700 font-semibold' : 'text-gray-700'}`}>
-                        <span>{l.flag}</span><span>{l.label}</span>
+                        <span>{l.label}</span>
                       </button>
                     ))}
                   </div>
@@ -190,11 +191,9 @@ export default function LandingPage() {
                   {t('go_to_dashboard')} <ArrowRight size={15} />
                 </button>
               ) : (
-                <>
-                  <Link to="/login" className="flex items-center gap-1.5 bg-primary-600 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-primary-700 transition-all active:scale-95 shadow-md shadow-primary-200">
-                    {t('login')} <ArrowRight size={15} />
-                  </Link>
-                </>
+                <Link to="/get-started" className="flex items-center gap-1.5 bg-primary-600 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-primary-700 transition-all active:scale-95 shadow-md shadow-primary-200">
+                  {t('login')} <ArrowRight size={15} />
+                </Link>
               )}
             </div>
 
@@ -213,25 +212,23 @@ export default function LandingPage() {
               <button
                 key={link.id}
                 onClick={() => { scrollTo(link.id); setMobileMenuOpen(false); }}
-                className={`block w-full text-left py-2 text-sm font-medium transition-colors ${
-                  activeSection === link.id
+                className={`block w-full text-left py-2 text-sm font-medium transition-colors ${activeSection === link.id
                     ? 'text-primary-700 font-semibold'
                     : 'text-gray-700 hover:text-primary-700'
-                }`}
+                  }`}
               >
                 {t(link.labelKey)}
               </button>
             ))}
-            <div className="flex gap-3 pt-2">
-              <Link to="/login" className="flex-1 text-center py-2.5 border-2 border-primary-600 text-primary-700 rounded-xl text-sm font-semibold">{t('login')}</Link>
-              <Link to="/login" className="flex-1 text-center py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold">{t('login')}</Link>
+            <div className="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100">
+              <Link to="/get-started" className="flex-1 text-center py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold">{t('login')}</Link>
             </div>
             {/* Language switcher in mobile */}
             <div className="flex gap-2 pt-1">
               {LANGUAGES.map(l => (
                 <button key={l.code} onClick={() => changeLang(l.code)}
                   className={`flex-1 py-2 text-xs rounded-lg border transition-all ${i18n.language === l.code ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-600 border-gray-200'}`}>
-                  {l.flag} {l.label}
+                  {l.label}
                 </button>
               ))}
             </div>
@@ -297,12 +294,12 @@ export default function LandingPage() {
                 { icon: Warehouse, labelKey: 'warehouse', value: stats.warehouses, color: 'from-purple-400 to-violet-600', glow: 'shadow-purple-500/30' },
               ].map((s, i) => (
                 <div key={i}
-                  className={`bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-4 hover:bg-white/20 transition-all hover:-translate-y-2 shadow-xl ${s.glow} cursor-default`}>
-                  <span className={`inline-flex w-8 h-8 rounded-xl bg-gradient-to-br ${s.color} items-center justify-center mb-3 shadow-lg`}>
-                    <s.icon size={16} className="text-white" />
+                  className={`bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-2 sm:p-4 hover:bg-white/20 transition-all hover:-translate-y-2 shadow-xl ${s.glow} cursor-default`}>
+                  <span className={`inline-flex w-6 h-6 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br ${s.color} items-center justify-center mb-1 sm:mb-3 shadow-lg`}>
+                    <s.icon className="text-white w-3 h-3 sm:w-4 sm:h-4" />
                   </span>
-                  <p className="text-4xl font-black text-white drop-shadow">{s.value}+</p>
-                  <p className="text-white/60 text-xs font-medium mt-1">{t(s.labelKey)}</p>
+                  <p className="text-xl sm:text-4xl font-black text-white drop-shadow">{s.value}+</p>
+                  <p className="text-white/60 text-[10px] sm:text-xs font-medium mt-0.5 sm:mt-1 leading-tight">{t(s.labelKey)}</p>
                 </div>
               ))}
             </div>
@@ -507,22 +504,22 @@ export default function LandingPage() {
         {/* Content */}
         <div className="py-20 bg-gray-50">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="space-y-16">
+            <div className="grid grid-cols-2 md:grid-cols-1 gap-4 sm:gap-16">
               {[
                 { step: '01', icon: BadgeCheck, titleKey: 'hiw_step1_title', descKey: 'hiw_step1_desc', color: 'from-primary-500 to-green-600' },
                 { step: '02', icon: BarChart3, titleKey: 'hiw_step2_title', descKey: 'hiw_step2_desc', color: 'from-amber-500 to-orange-500' },
                 { step: '03', icon: Award, titleKey: 'hiw_step3_title', descKey: 'hiw_step3_desc', color: 'from-blue-500 to-cyan-600' },
               ].map((item, index) => (
-                <div key={item.step} className={`flex flex-col ${index % 2 !== 0 ? 'md:flex-row-reverse' : 'md:flex-row'} items-center gap-10`}>
-                  <div className="flex-1">
-                    <div className="relative bg-white rounded-3xl p-10 border border-gray-100 shadow-xl">
-                      <div className="text-8xl font-black text-gray-50 absolute -top-6 -right-2 select-none z-0">{item.step}</div>
+                <div key={item.step} className={`flex flex-col ${index % 2 !== 0 ? 'md:flex-row-reverse' : 'md:flex-row'} items-center gap-4 sm:gap-10`}>
+                  <div className="flex-1 w-full">
+                    <div className="relative bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-10 border border-gray-100 shadow-xl h-full">
+                      <div className="text-4xl sm:text-8xl font-black text-gray-50 absolute -top-3 sm:-top-6 right-0 sm:-right-2 select-none z-0">{item.step}</div>
                       <div className="relative z-10">
-                        <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center mb-6 shadow-lg`}>
-                          <item.icon size={30} className="text-white" />
+                        <div className={`w-10 h-10 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center mb-3 sm:mb-6 shadow-lg`}>
+                          <item.icon className="text-white w-5 h-5 sm:w-8 sm:h-8" />
                         </div>
-                        <h3 className="font-black text-gray-900 text-2xl mb-4">{t(item.titleKey)}</h3>
-                        <p className="text-gray-500 text-lg leading-relaxed">{t(item.descKey)}</p>
+                        <h3 className="font-black text-gray-900 text-sm sm:text-2xl mb-2 sm:mb-4">{t(item.titleKey)}</h3>
+                        <p className="text-gray-500 text-xs sm:text-lg leading-relaxed line-clamp-4 sm:line-clamp-none">{t(item.descKey)}</p>
                       </div>
                     </div>
                   </div>
@@ -561,7 +558,7 @@ export default function LandingPage() {
                           </span>
                         </div>
                         <div className="p-5 space-y-2">
-                          {[['Rice', 'A', '₹48/kg'], ['Wheat', 'A', '₹21/kg'], ['Soybean', 'B', '₹36/kg'], ['Maize', 'A', '₹32/kg']].map(([crop, grade, price]) => (
+                          {[['Rice', 'A', '₹48/kg'], ['Wheat', 'A', '₹21/kg'], ['Maize', 'A', '₹32/kg']].map(([crop, grade, price]) => (
                             <div key={crop} className="flex justify-between items-center px-3 py-2 rounded-xl bg-amber-50">
                               <span className="text-sm font-semibold text-gray-700">{crop}</span>
                               <div className="flex items-center gap-2">
@@ -621,14 +618,14 @@ export default function LandingPage() {
         {/* Content */}
         <div className="py-20 bg-gray-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
               {features.map((f, i) => (
-                <div key={i} className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
-                  <div className={`w-14 h-14 rounded-2xl ${f.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
-                    <f.icon size={28} />
+                <div key={i} className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
+                  <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl ${f.color} flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform`}>
+                    <f.icon className="w-5 h-5 sm:w-7 sm:h-7" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">{t(f.titleKey)}</h3>
-                  <p className="text-gray-500 leading-relaxed">{t(f.descKey)}</p>
+                  <h3 className="text-sm sm:text-xl font-bold text-gray-900 mb-2 sm:mb-3">{t(f.titleKey)}</h3>
+                  <p className="text-xs sm:text-base text-gray-500 leading-relaxed line-clamp-3 sm:line-clamp-none">{t(f.descKey)}</p>
                 </div>
               ))}
             </div>
@@ -652,7 +649,7 @@ export default function LandingPage() {
             <div className="flex gap-6 text-sm text-gray-400">
               <button onClick={() => scrollTo('market-rates')} className="hover:text-white transition-colors">{t('market_rates_nav')}</button>
               <button onClick={() => scrollTo('seeds-catalog')} className="hover:text-white transition-colors">{t('seeds_catalog_nav')}</button>
-              <Link to="/login" className="hover:text-white transition-colors">{t('farmer_login')}</Link>
+              <Link to="/get-started" className="hover:text-white transition-colors">{t('farmer_login')}</Link>
             </div>
             <div className="flex flex-col md:items-end gap-1">
               <p className="text-gray-500 text-xs">{t('footer_copyright')}</p>

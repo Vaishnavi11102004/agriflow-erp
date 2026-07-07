@@ -346,7 +346,7 @@ export default function FarmVisits() {
                     <label className="flex-1 flex flex-col items-center justify-center gap-1 py-3 bg-emerald-50 text-emerald-700 rounded-xl cursor-pointer hover:bg-emerald-100 transition-colors border border-emerald-200 border-dashed">
                       <Camera size={18} />
                       <span className="text-xs font-semibold">Take Photo</span>
-                      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handlePhotoUpload(e, v.id)} />
+                      <input type="file" accept="image/*" capture="camera" className="hidden" onChange={(e) => handlePhotoUpload(e, v.id)} />
                     </label>
                     <label className="flex-1 flex flex-col items-center justify-center gap-1 py-3 bg-blue-50 text-blue-700 rounded-xl cursor-pointer hover:bg-blue-100 transition-colors border border-blue-200 border-dashed">
                       <Upload size={18} />
@@ -377,13 +377,10 @@ export default function FarmVisits() {
                   )}
 
                   <div className="flex gap-2">
-                    <button className="btn-secondary flex-1 flex justify-center items-center gap-1 text-sm">
-                      <Navigation size={14} />{t('nav')}
-                    </button>
                     <button
                       onClick={() => handleAction(v.id, 'completed')}
                       disabled={completingId === v.id}
-                      className="btn-primary flex-1 flex justify-center items-center gap-1 text-sm disabled:opacity-70"
+                      className="btn-primary w-full flex justify-center items-center gap-1 text-sm disabled:opacity-70"
                     >
                       {completingId === v.id
                         ? <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
