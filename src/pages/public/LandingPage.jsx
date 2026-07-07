@@ -368,25 +368,25 @@ export default function LandingPage() {
                 {filteredCrops.map(crop => (
                   <div key={crop} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden w-full">
                     <div className="bg-gradient-to-r from-primary-700 to-primary-900 px-3 py-3 sm:px-5 sm:py-4 flex items-center gap-2 sm:gap-3">
-                      <span className={`w-10 h-10 rounded-xl bg-gradient-to-br ${CROP_COLORS[crop] || CROP_COLORS.default} flex items-center justify-center text-white font-black text-lg shadow-lg flex-shrink-0`}>{crop[0]}</span>
-                      <div>
-                        <h4 className="text-white font-bold text-lg">{crop}</h4>
-                        <p className="text-white/60 text-xs">{t('mr_price_per_kg')}</p>
+                      <span className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br ${CROP_COLORS[crop] || CROP_COLORS.default} flex items-center justify-center text-white font-black text-sm sm:text-lg shadow-lg flex-shrink-0`}>{crop[0]}</span>
+                      <div className="min-w-0">
+                        <h4 className="text-white font-bold text-sm sm:text-lg truncate">{crop}</h4>
+                        <p className="text-white/60 text-[10px] sm:text-xs truncate">{t('mr_price_per_kg')}</p>
                       </div>
                     </div>
-                    <div className="p-5 space-y-3">
+                    <div className="p-2 sm:p-5 space-y-2 sm:space-y-3">
                       {['A', 'B', 'C'].map(grade => grouped[crop]?.[grade] && (
-                        <div key={grade} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${GRADE_COLOR[grade]}`}>{t('grade_label')} {grade}</span>
-                            <span className="text-gray-400 text-xs">{grade === 'A' ? t('mr_grade_premium') : grade === 'B' ? t('mr_grade_standard') : t('mr_grade_basic')}</span>
+                        <div key={grade} className="flex items-center justify-between p-2 sm:p-3 rounded-xl bg-gray-50">
+                          <div className="flex flex-col xl:flex-row xl:items-center gap-0.5 sm:gap-2">
+                            <span className={`px-1.5 py-0.5 sm:px-2.5 sm:py-0.5 rounded-full text-[10px] sm:text-xs font-bold w-fit ${GRADE_COLOR[grade]}`}>{t('grade_label')} {grade}</span>
+                            <span className="text-gray-400 text-[9px] sm:text-xs truncate">{grade === 'A' ? t('mr_grade_premium') : grade === 'B' ? t('mr_grade_standard') : t('mr_grade_basic')}</span>
                           </div>
-                          <span className="text-primary-700 font-black text-lg">₹{grouped[crop][grade].toFixed(0)}</span>
+                          <span className="text-primary-700 font-black text-sm sm:text-lg ml-1">₹{grouped[crop][grade].toFixed(0)}</span>
                         </div>
                       ))}
                       <button onClick={() => handleActionClick('sell')}
-                        className="w-full mt-2 py-2.5 border-2 border-primary-600 text-primary-700 rounded-xl text-sm font-semibold hover:bg-primary-50 transition-all flex items-center justify-center gap-1.5">
-                        {t('mr_sell_btn')} {crop} <ChevronRight size={15} />
+                        className="w-full mt-1 sm:mt-2 py-1.5 sm:py-2.5 border-2 border-primary-600 text-primary-700 rounded-xl text-[11px] sm:text-sm font-semibold hover:bg-primary-50 transition-all flex items-center justify-center gap-1">
+                        <span className="truncate">{t('mr_sell_btn')} {crop}</span> <ChevronRight size={14} className="flex-shrink-0" />
                       </button>
                     </div>
                   </div>
