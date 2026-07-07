@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api/axios';
@@ -16,6 +16,14 @@ export default function FarmersDirectory() {
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
+  
+  // Prevent background scrolling when modal is open
+  useEffect(() => {
+    if (showRegisterModal) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = 'auto';
+    return () => { document.body.style.overflow = 'auto'; };
+  }, [showRegisterModal]);
+
   const [regSaving, setRegSaving] = useState(false);
   const [registerForm, setRegisterForm] = useState({
     name: '', phone: '', password: '', address: '', acres_of_land: '', crop_address: ''
@@ -26,19 +34,25 @@ export default function FarmersDirectory() {
     let error = null;
     switch (field) {
       case 'name': error = validators.name(value); break;
-      case 'phone': error = validators.phone(value); break;
+      case 'phone':
+        if (!value) error = 'Phone Number is required.';
+        else if (!/^\d+$/.test(value)) error = 'Phone Number must contain only digits.';
+        else if (value.length !== 10) error = 'Phone Number must contain exactly 10 digits.';
+        else error = null;
+        break;
       case 'password': error = validators.password(value); break;
-      case 'address': error = validators.address(value); break;
-      case 'acres_of_land': error = validators.acres(value); break;
-      case 'crop_address': error = value ? null : 'Crop address is required'; break;
+      case 'address': error = value ? validators.address(value) : null; break;
+      case 'acres_of_land': error = value ? validators.acres(value) : null; break;
+      case 'crop_address': error = null; break;
       default: break;
     }
     setFieldErrors(prev => ({ ...prev, [field]: error }));
+    return error;
   };
 
   const updateForm = (field, value) => {
     setRegisterForm(f => ({ ...f, [field]: value }));
-    if (fieldErrors[field]) setFieldErrors(prev => ({ ...prev, [field]: null }));
+    if (fieldErrors[field]) validateField(field, value);
   };
 
   const { data: farmers = [], isLoading: loading } = useQuery({
@@ -66,11 +80,19 @@ export default function FarmersDirectory() {
 
   const handleRegisterFarmer = async (e) => {
     e.preventDefault();
-    if (!registerForm.name || !registerForm.phone || !registerForm.password) {
-      return toast.error('Name, phone and password are required');
+    
+    // Validate on form submission
+    const nameErr = validateField('name', registerForm.name);
+    const phoneErr = validateField('phone', registerForm.phone);
+    const passErr = validateField('password', registerForm.password);
+    const addrErr = validateField('address', registerForm.address);
+    const acresErr = validateField('acres_of_land', registerForm.acres_of_land);
+    const cropAddrErr = validateField('crop_address', registerForm.crop_address);
+    
+    if (nameErr || phoneErr || passErr || addrErr || acresErr || cropAddrErr) {
+      return; // Stop submission if errors
     }
-    if (registerForm.phone.length !== 10) return toast.error('Phone must be 10 digits');
-    if (registerForm.password.length < 8) return toast.error('Password must be at least 8 characters');
+    
     setRegSaving(true);
     try {
       const payload = { ...registerForm };
@@ -250,28 +272,28 @@ export default function FarmersDirectory() {
 
       {/* Register Farmer Modal */}
       {showRegisterModal && (
-        <div className="modal-backdrop">
+        <div className="modal-overlay">
           <div className="modal-content max-w-lg">
             <div className="modal-header">
               <h3 className="modal-title">Register New Farmer</h3>
               <button onClick={() => setShowRegisterModal(false)} className="btn-icon"><X size={18} /></button>
             </div>
-            <form onSubmit={handleRegisterFarmer}>
+            <form onSubmit={handleRegisterFarmer} noValidate>
               <div className="modal-body space-y-4">
                 <div>
                   <label className="label">Full Name *</label>
-                  <input value={registerForm.name} onChange={e => updateForm('name', e.target.value)} onBlur={() => validateField('name', registerForm.name)} className={`input-field ${fieldErrors.name ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder="Farmer full name" />
+                  <input value={registerForm.name} onChange={e => updateForm('name', e.target.value)} onBlur={() => validateField('name', registerForm.name)} className={`input-field ${fieldErrors.name ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder="Farmer full name" required />
                   <FieldError error={fieldErrors.name} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="label">Phone (10 digits) *</label>
-                    <input value={registerForm.phone} onChange={e => updateForm('phone', e.target.value)} onBlur={() => validateField('phone', registerForm.phone)} className={`input-field ${fieldErrors.phone ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder="9876543210" maxLength={10} inputMode="numeric" />
+                    <input value={registerForm.phone} onChange={e => updateForm('phone', e.target.value)} onBlur={() => validateField('phone', registerForm.phone)} className={`input-field ${fieldErrors.phone ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder="9876543210" maxLength={10} inputMode="numeric" required />
                     <FieldError error={fieldErrors.phone} />
                   </div>
                   <div>
                     <label className="label">Password *</label>
-                    <input type="password" value={registerForm.password} onChange={e => updateForm('password', e.target.value)} onBlur={() => validateField('password', registerForm.password)} className={`input-field ${fieldErrors.password ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder="Min. 8 characters" />
+                    <input type="password" value={registerForm.password} onChange={e => updateForm('password', e.target.value)} onBlur={() => validateField('password', registerForm.password)} className={`input-field ${fieldErrors.password ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder="Min. 8 characters" required />
                     <FieldError error={fieldErrors.password} />
                   </div>
                 </div>
@@ -294,7 +316,7 @@ export default function FarmersDirectory() {
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" onClick={() => setShowRegisterModal(false)} className="btn-ghost">Cancel</button>
+                <button type="button" onClick={() => { setRegisterForm({ name: '', phone: '', password: '', address: '', acres_of_land: '', crop_address: '' }); setFieldErrors({}); setShowRegisterModal(false); }} className="btn-ghost">Cancel</button>
                 <button type="submit" disabled={regSaving} className="btn-primary flex items-center gap-2">
                   {regSaving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <UserPlus size={16} />}
                   {regSaving ? 'Registering...' : 'Register Farmer'}

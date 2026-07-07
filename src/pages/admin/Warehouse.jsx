@@ -4,6 +4,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api/axios';
 import { Warehouse, Plus, X, CheckCircle, PackageSearch } from 'lucide-react';
 import toast from 'react-hot-toast';
+import validators from '../../utils/validators';
+import FieldError from '../../components/shared/FieldError';
 
 export default function WarehouseManagement() {
   const { t } = useTranslation();
@@ -16,6 +18,26 @@ export default function WarehouseManagement() {
   const [invForm, setInvForm] = useState({ grain_type: 'Rice', custom_type: '', quantity_kg: '' });
   const [showSlotModal, setShowSlotModal] = useState(false);
   const [slotForm, setSlotForm] = useState({ slot_date: '', start_time: '', end_time: '', total_capacity_kg: '' });
+
+  const [fieldErrors, setFieldErrors] = useState({});
+  const validateField = (formType, field, value) => {
+    let error = null;
+    if (formType === 'warehouse') {
+      if (field === 'name') error = validators.warehouseName(value);
+      if (field === 'address') error = validators.address(value);
+      if (field === 'total_capacity_kg') error = validators.positiveNumber(value, null, 'Capacity');
+    } else if (formType === 'inventory') {
+      if (field === 'quantity_kg') error = validators.positiveNumber(value, null, 'Quantity');
+    } else if (formType === 'slot') {
+      if (field === 'slot_date') error = validators.date(value);
+      if (field === 'start_time') error = validators.time(value);
+      if (field === 'end_time') error = validators.time(value);
+      if (field === 'total_capacity_kg') error = validators.positiveNumber(value, null, 'Capacity');
+    }
+    setFieldErrors(prev => ({ ...prev, [`${formType}_${field}`]: error }));
+  };
+
+  const hasErrors = Object.values(fieldErrors).some(err => err !== null);
 
   const { data: warehouses = [], isLoading: loading } = useQuery({
     queryKey: ['admin-warehouses'],
@@ -44,6 +66,8 @@ export default function WarehouseManagement() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.name || !form.address || !form.total_capacity_kg) return toast.error('All fields are required');
+    if (hasErrors) return;
     setSaving(true);
     try {
       await api.post('/admin/warehouses', { ...form, total_capacity_kg: parseFloat(form.total_capacity_kg) });
@@ -56,6 +80,8 @@ export default function WarehouseManagement() {
 
   const handleAddInventory = async (e) => {
     e.preventDefault();
+    if (!invForm.quantity_kg) return toast.error('Quantity is required');
+    if (hasErrors) return;
     const finalGrainType = invForm.grain_type === 'Other Seeds' ? invForm.custom_type.trim() : invForm.grain_type;
     if (!finalGrainType) {
       toast.error('Please enter the seed type');
@@ -77,6 +103,8 @@ export default function WarehouseManagement() {
 
   const handleCreateSlot = async (e) => {
     e.preventDefault();
+    if (!slotForm.slot_date || !slotForm.start_time || !slotForm.end_time || !slotForm.total_capacity_kg) return toast.error('All fields are required');
+    if (hasErrors) return;
     setSaving(true);
     try {
       await api.post('/admin/warehouse-slots', {
@@ -96,7 +124,7 @@ export default function WarehouseManagement() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div><h1 className="page-title">{t('warehouse')}</h1><p className="page-subtitle">{t("warehouse_desc")}</p></div>
-        <button onClick={() => { setForm({ name: '', address: '', total_capacity_kg: '' }); setShowModal(true); }} className="btn-primary flex items-center gap-2">
+        <button onClick={() => { setForm({ name: '', address: '', total_capacity_kg: '' }); setFieldErrors({}); setShowModal(true); }} className="btn-primary flex items-center gap-2">
           <Plus size={16} />{t('add_warehouse')}
         </button>
       </div>
@@ -199,13 +227,25 @@ export default function WarehouseManagement() {
               <button onClick={() => setShowModal(false)} className="btn-icon"><X size={18} /></button>
             </div>
             <form onSubmit={handleSubmit} className="modal-body space-y-4">
-              <div><label className="label">{t("warehouse_name")} *</label><input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="input-field" required /></div>
-              <div><label className="label">{t("address")} *</label><input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} className="input-field" required /></div>
-              <div><label className="label">{t("total_capacity_kg")} *</label><input type="number" value={form.total_capacity_kg} onChange={e => setForm(f => ({ ...f, total_capacity_kg: e.target.value }))} className="input-field" min="100" step="100" required /></div>
+              <div>
+                <label className="label">{t("warehouse_name")} *</label>
+                <input value={form.name} onChange={e => { setForm(f => ({ ...f, name: e.target.value })); setFieldErrors(prev => ({...prev, warehouse_name: null}))}} onBlur={() => validateField('warehouse', 'name', form.name)} className={`input-field ${fieldErrors.warehouse_name ? 'border-red-400 ring-1 ring-red-200' : ''}`} required />
+                <FieldError error={fieldErrors.warehouse_name} />
+              </div>
+              <div>
+                <label className="label">{t("address")} *</label>
+                <input value={form.address} onChange={e => { setForm(f => ({ ...f, address: e.target.value })); setFieldErrors(prev => ({...prev, warehouse_address: null}))}} onBlur={() => validateField('warehouse', 'address', form.address)} className={`input-field ${fieldErrors.warehouse_address ? 'border-red-400 ring-1 ring-red-200' : ''}`} required />
+                <FieldError error={fieldErrors.warehouse_address} />
+              </div>
+              <div>
+                <label className="label">{t("total_capacity_kg")} *</label>
+                <input type="number" value={form.total_capacity_kg} onChange={e => { setForm(f => ({ ...f, total_capacity_kg: e.target.value })); setFieldErrors(prev => ({...prev, warehouse_total_capacity_kg: null}))}} onBlur={() => validateField('warehouse', 'total_capacity_kg', form.total_capacity_kg)} className={`input-field ${fieldErrors.warehouse_total_capacity_kg ? 'border-red-400 ring-1 ring-red-200' : ''}`} min="100" step="100" required />
+                <FieldError error={fieldErrors.warehouse_total_capacity_kg} />
+              </div>
             </form>
             <div className="modal-footer">
-              <button onClick={() => { setForm({ name: '', address: '', total_capacity_kg: '' }); setShowModal(false); }} className="btn-ghost">{t("cancel")}</button>
-              <button onClick={handleSubmit} disabled={saving} className="btn-primary flex items-center gap-2">
+              <button onClick={() => { setForm({ name: '', address: '', total_capacity_kg: '' }); setFieldErrors({}); setShowModal(false); }} className="btn-ghost">{t("cancel")}</button>
+              <button onClick={handleSubmit} disabled={saving || hasErrors} className="btn-primary flex items-center gap-2">
                 {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle size={16} />}{saving ? t('saving') : t('save_warehouse')}
               </button>
             </div>
@@ -239,11 +279,15 @@ export default function WarehouseManagement() {
                   <input type="text" value={invForm.custom_type} onChange={e => setInvForm(f => ({ ...f, custom_type: e.target.value }))} className="input-field" placeholder="e.g. Sunflower" required />
                 </div>
               )}
-              <div><label className="label">{t('quantity_kg', 'Quantity (kg)')} *</label><input type="number" value={invForm.quantity_kg} onChange={e => setInvForm(f => ({ ...f, quantity_kg: e.target.value }))} className="input-field" min="1" step="1" required /></div>
+              <div>
+                <label className="label">{t('quantity_kg', 'Quantity (kg)')} *</label>
+                <input type="number" value={invForm.quantity_kg} onChange={e => { setInvForm(f => ({ ...f, quantity_kg: e.target.value })); setFieldErrors(prev => ({...prev, inventory_quantity_kg: null}))}} onBlur={() => validateField('inventory', 'quantity_kg', invForm.quantity_kg)} className={`input-field ${fieldErrors.inventory_quantity_kg ? 'border-red-400 ring-1 ring-red-200' : ''}`} min="1" step="1" required />
+                <FieldError error={fieldErrors.inventory_quantity_kg} />
+              </div>
             </form>
             <div className="modal-footer">
-              <button onClick={() => { setInvForm({ grain_type: 'Rice', custom_type: '', quantity_kg: '' }); setShowInvModal(false); }} className="btn-ghost">{t('cancel')}</button>
-              <button onClick={handleAddInventory} disabled={saving} className="btn-primary flex items-center gap-2">
+              <button onClick={() => { setInvForm({ grain_type: 'Rice', custom_type: '', quantity_kg: '' }); setFieldErrors({}); setShowInvModal(false); }} className="btn-ghost">{t('cancel')}</button>
+              <button onClick={handleAddInventory} disabled={saving || hasErrors} className="btn-primary flex items-center gap-2">
                 {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle size={16} />}{saving ? t('saving') : t('add_inventory', 'Add Inventory')}
               </button>
             </div>
@@ -259,16 +303,32 @@ export default function WarehouseManagement() {
               <button onClick={() => setShowSlotModal(false)} className="btn-icon"><X size={18} /></button>
             </div>
             <form onSubmit={handleCreateSlot} className="modal-body space-y-4">
-              <div><label className="label">{t('date', 'Date')} *</label><input type="date" value={slotForm.slot_date} onChange={e => setSlotForm(f => ({ ...f, slot_date: e.target.value }))} className="input-field" min={new Date().toISOString().split('T')[0]} required /></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className="label">{t('start_time', 'Start Time')} *</label><input type="time" value={slotForm.start_time} onChange={e => setSlotForm(f => ({ ...f, start_time: e.target.value }))} className="input-field" required /></div>
-                <div><label className="label">{t('end_time', 'End Time')} *</label><input type="time" value={slotForm.end_time} onChange={e => setSlotForm(f => ({ ...f, end_time: e.target.value }))} className="input-field" required /></div>
+              <div>
+                <label className="label">{t('date', 'Date')} *</label>
+                <input type="date" value={slotForm.slot_date} onChange={e => { setSlotForm(f => ({ ...f, slot_date: e.target.value })); setFieldErrors(prev => ({...prev, slot_slot_date: null}))}} onBlur={() => validateField('slot', 'slot_date', slotForm.slot_date)} className={`input-field ${fieldErrors.slot_slot_date ? 'border-red-400 ring-1 ring-red-200' : ''}`} min={new Date().toISOString().split('T')[0]} required />
+                <FieldError error={fieldErrors.slot_slot_date} />
               </div>
-              <div><label className="label">{t('slot_capacity_kg', 'Slot Capacity (kg)')} *</label><input type="number" value={slotForm.total_capacity_kg} onChange={e => setSlotForm(f => ({ ...f, total_capacity_kg: e.target.value }))} className="input-field" min="100" step="100" required /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label">{t('start_time', 'Start Time')} *</label>
+                  <input type="time" value={slotForm.start_time} onChange={e => { setSlotForm(f => ({ ...f, start_time: e.target.value })); setFieldErrors(prev => ({...prev, slot_start_time: null}))}} onBlur={() => validateField('slot', 'start_time', slotForm.start_time)} className={`input-field ${fieldErrors.slot_start_time ? 'border-red-400 ring-1 ring-red-200' : ''}`} required />
+                  <FieldError error={fieldErrors.slot_start_time} />
+                </div>
+                <div>
+                  <label className="label">{t('end_time', 'End Time')} *</label>
+                  <input type="time" value={slotForm.end_time} onChange={e => { setSlotForm(f => ({ ...f, end_time: e.target.value })); setFieldErrors(prev => ({...prev, slot_end_time: null}))}} onBlur={() => validateField('slot', 'end_time', slotForm.end_time)} className={`input-field ${fieldErrors.slot_end_time ? 'border-red-400 ring-1 ring-red-200' : ''}`} required />
+                  <FieldError error={fieldErrors.slot_end_time} />
+                </div>
+              </div>
+              <div>
+                <label className="label">{t('slot_capacity_kg', 'Slot Capacity (kg)')} *</label>
+                <input type="number" value={slotForm.total_capacity_kg} onChange={e => { setSlotForm(f => ({ ...f, total_capacity_kg: e.target.value })); setFieldErrors(prev => ({...prev, slot_total_capacity_kg: null}))}} onBlur={() => validateField('slot', 'total_capacity_kg', slotForm.total_capacity_kg)} className={`input-field ${fieldErrors.slot_total_capacity_kg ? 'border-red-400 ring-1 ring-red-200' : ''}`} min="100" step="100" required />
+                <FieldError error={fieldErrors.slot_total_capacity_kg} />
+              </div>
             </form>
             <div className="modal-footer">
-              <button onClick={() => { setSlotForm({ slot_date: '', start_time: '', end_time: '', total_capacity_kg: '' }); setShowSlotModal(false); }} className="btn-ghost">{t('cancel')}</button>
-              <button onClick={handleCreateSlot} disabled={saving} className="btn-primary flex items-center gap-2">
+              <button onClick={() => { setSlotForm({ slot_date: '', start_time: '', end_time: '', total_capacity_kg: '' }); setFieldErrors({}); setShowSlotModal(false); }} className="btn-ghost">{t('cancel')}</button>
+              <button onClick={handleCreateSlot} disabled={saving || hasErrors} className="btn-primary flex items-center gap-2">
                 {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle size={16} />}{saving ? t('saving') : t('create_slot', 'Create Slot')}
               </button>
             </div>

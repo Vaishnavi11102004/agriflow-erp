@@ -313,26 +313,6 @@ export default function FarmVisits() {
                       </div>
                     </div>
                   )}
-                  {/* Date picker to reschedule */}
-                  <label className="text-xs font-semibold text-gray-600 block mb-1">
-                    {v.scheduled_date ? 'Reschedule Date' : 'Set Visit Date'}
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="date"
-                      min={new Date().toISOString().split('T')[0]}
-                      className="input-field py-1.5 px-3 text-xs flex-1 border border-gray-200 rounded-lg bg-gray-50"
-                      value={visitDates[v.id] || v.scheduled_date || ''}
-                      onChange={(e) => setVisitDates(p => ({ ...p, [v.id]: e.target.value }))}
-                    />
-                    <button
-                      onClick={() => updateScheduledDate(v.id)}
-                      disabled={!visitDates[v.id]}
-                      className="btn-primary py-1.5 px-4 text-xs font-semibold rounded-lg shadow-sm whitespace-nowrap disabled:opacity-40"
-                    >
-                      <Clock size={12} className="inline mr-1" />Save
-                    </button>
-                  </div>
                 </div>
               )}
 
@@ -343,11 +323,6 @@ export default function FarmVisits() {
                     <ImageIcon size={13} /> Capture Farm Status
                   </p>
                   <div className="flex gap-2">
-                    <label className="flex-1 flex flex-col items-center justify-center gap-1 py-3 bg-emerald-50 text-emerald-700 rounded-xl cursor-pointer hover:bg-emerald-100 transition-colors border border-emerald-200 border-dashed">
-                      <Camera size={18} />
-                      <span className="text-xs font-semibold">Take Photo</span>
-                      <input type="file" accept="image/*" capture="camera" className="hidden" onChange={(e) => handlePhotoUpload(e, v.id)} />
-                    </label>
                     <label className="flex-1 flex flex-col items-center justify-center gap-1 py-3 bg-blue-50 text-blue-700 rounded-xl cursor-pointer hover:bg-blue-100 transition-colors border border-blue-200 border-dashed">
                       <Upload size={18} />
                       <span className="text-xs font-semibold">Upload Image</span>
@@ -384,7 +359,7 @@ export default function FarmVisits() {
                     >
                       {completingId === v.id
                         ? <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
-                        : <><CheckCircle size={14} />{t('done')}</>
+                        : <><CheckCircle size={14} />{t('submit', 'Submit')}</>
                       }
                     </button>
                   </div>
@@ -472,18 +447,17 @@ export default function FarmVisits() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="label">Visit Month Number *</label>
+                  <label className="label">Visit Number *</label>
                   <input 
                     type="number" 
                     min="1" 
-                    max="12"
+                    max="100"
                     className="input-field" 
                     placeholder="e.g. 2"
                     value={addForm.visit_month}
                     onChange={e => setAddForm(f => ({ ...f, visit_month: e.target.value }))}
                     required
                   />
-                  <p className="text-[10px] text-gray-400 mt-1">Which month of the crop cycle</p>
                 </div>
                 <div>
                   <label className="label">Scheduled Date *</label>
