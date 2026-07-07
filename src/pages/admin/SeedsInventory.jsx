@@ -123,7 +123,7 @@ export default function SeedsInventory() {
               </div>
               <button onClick={() => setShowModal(false)} className="btn-icon"><X size={18} /></button>
             </div>
-            <form onSubmit={handleSubmit} className="modal-body space-y-4">
+            <form id="seed-form" onSubmit={handleSubmit} className="modal-body space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="label">{t("seed_name")} *</label>
@@ -161,7 +161,7 @@ export default function SeedsInventory() {
             </form>
             <div className="modal-footer">
               <button onClick={() => setShowModal(false)} className="btn-ghost">{t("cancel")}</button>
-              <button onClick={handleSubmit} disabled={saving || isUnchanged} className="btn-primary flex items-center gap-2">
+              <button type="submit" form="seed-form" disabled={saving || isUnchanged} className="btn-primary flex items-center gap-2">
                 {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle size={16} />}
                 {saving ? t('saving') : t('save_seed')}
               </button>

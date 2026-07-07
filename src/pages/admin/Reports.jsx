@@ -183,11 +183,13 @@ export default function Reports() {
           { id: 'transaction_ledger', title: t('transaction_ledger'), desc: t('transaction_ledger_desc'), icon: <ArrowRight size={18} /> },
           { id: 'warehouse_inventory_logs', title: t('warehouse_inventory_logs'), desc: t('warehouse_inventory_logs_desc'), icon: <Download size={18} /> },
         ].map(r => (
-          <div key={r.title} className="glass-card p-5 hover-lift cursor-pointer" onClick={() => downloadReport(r.id)}>
+          <div key={r.title} className="glass-card p-5 hover-lift">
             <div className="w-10 h-10 bg-primary-50 text-primary-600 rounded-xl flex items-center justify-center mb-4">{r.icon}</div>
             <h4 className="font-bold text-gray-800 mb-1">{r.title}</h4>
             <p className="text-xs text-gray-500 mb-4">{r.desc}</p>
-            <span className="text-sm font-semibold text-primary-600 flex items-center gap-1 group">{t("download_report", "Download Report")} <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" /></span>
+            <button onClick={() => downloadReport(r.id)} className="text-sm font-semibold text-primary-600 flex items-center gap-1 group">
+              {t("download_report", "Download Report")} <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            </button>
           </div>
         ))}
       </div>

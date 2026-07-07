@@ -226,7 +226,7 @@ export default function WarehouseManagement() {
               <div className="flex items-center gap-3"><div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center"><Warehouse size={20} className="text-blue-600" /></div><div><h3 className="font-bold text-gray-800">{t("add_warehouse")}</h3></div></div>
               <button onClick={() => setShowModal(false)} className="btn-icon"><X size={18} /></button>
             </div>
-            <form onSubmit={handleSubmit} className="modal-body space-y-4">
+            <form id="warehouse-form" onSubmit={handleSubmit} className="modal-body space-y-4">
               <div>
                 <label className="label">{t("warehouse_name")} *</label>
                 <input value={form.name} onChange={e => { setForm(f => ({ ...f, name: e.target.value })); setFieldErrors(prev => ({...prev, warehouse_name: null}))}} onBlur={() => validateField('warehouse', 'name', form.name)} className={`input-field ${fieldErrors.warehouse_name ? 'border-red-400 ring-1 ring-red-200' : ''}`} required />
@@ -245,7 +245,7 @@ export default function WarehouseManagement() {
             </form>
             <div className="modal-footer">
               <button onClick={() => { setForm({ name: '', address: '', total_capacity_kg: '' }); setFieldErrors({}); setShowModal(false); }} className="btn-ghost">{t("cancel")}</button>
-              <button onClick={handleSubmit} disabled={saving || hasErrors} className="btn-primary flex items-center gap-2">
+              <button type="submit" form="warehouse-form" disabled={saving || hasErrors} className="btn-primary flex items-center gap-2">
                 {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle size={16} />}{saving ? t('saving') : t('save_warehouse')}
               </button>
             </div>
@@ -260,7 +260,7 @@ export default function WarehouseManagement() {
               <div className="flex items-center gap-3"><div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center"><PackageSearch size={20} className="text-green-600" /></div><div><h3 className="font-bold text-gray-800">{t('add_inventory_to', 'Add Inventory to')} {selectedInventory.name}</h3></div></div>
               <button onClick={() => setShowInvModal(false)} className="btn-icon"><X size={18} /></button>
             </div>
-            <form onSubmit={handleAddInventory} className="modal-body space-y-4">
+            <form id="inventory-form" onSubmit={handleAddInventory} className="modal-body space-y-4">
               <div>
                 <label className="label">{t('grain_seed_type', 'Grain/Seed Type')} *</label>
                 <select value={invForm.grain_type} onChange={e => setInvForm(f => ({ ...f, grain_type: e.target.value }))} className="input-field" required>
@@ -287,7 +287,7 @@ export default function WarehouseManagement() {
             </form>
             <div className="modal-footer">
               <button onClick={() => { setInvForm({ grain_type: 'Rice', custom_type: '', quantity_kg: '' }); setFieldErrors({}); setShowInvModal(false); }} className="btn-ghost">{t('cancel')}</button>
-              <button onClick={handleAddInventory} disabled={saving || hasErrors} className="btn-primary flex items-center gap-2">
+              <button type="submit" form="inventory-form" disabled={saving || hasErrors} className="btn-primary flex items-center gap-2">
                 {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle size={16} />}{saving ? t('saving') : t('add_inventory', 'Add Inventory')}
               </button>
             </div>
@@ -302,7 +302,7 @@ export default function WarehouseManagement() {
               <div className="flex items-center gap-3"><div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center"><PackageSearch size={20} className="text-purple-600" /></div><div><h3 className="font-bold text-gray-800">{t('add_time_slot', 'Add Time Slot')}</h3><p className="text-xs text-gray-500">{selectedInventory.name}</p></div></div>
               <button onClick={() => setShowSlotModal(false)} className="btn-icon"><X size={18} /></button>
             </div>
-            <form onSubmit={handleCreateSlot} className="modal-body space-y-4">
+            <form id="slot-form" onSubmit={handleCreateSlot} className="modal-body space-y-4">
               <div>
                 <label className="label">{t('date', 'Date')} *</label>
                 <input type="date" value={slotForm.slot_date} onChange={e => { setSlotForm(f => ({ ...f, slot_date: e.target.value })); setFieldErrors(prev => ({...prev, slot_slot_date: null}))}} onBlur={() => validateField('slot', 'slot_date', slotForm.slot_date)} className={`input-field ${fieldErrors.slot_slot_date ? 'border-red-400 ring-1 ring-red-200' : ''}`} min={new Date().toISOString().split('T')[0]} required />
@@ -328,7 +328,7 @@ export default function WarehouseManagement() {
             </form>
             <div className="modal-footer">
               <button onClick={() => { setSlotForm({ slot_date: '', start_time: '', end_time: '', total_capacity_kg: '' }); setFieldErrors({}); setShowSlotModal(false); }} className="btn-ghost">{t('cancel')}</button>
-              <button onClick={handleCreateSlot} disabled={saving || hasErrors} className="btn-primary flex items-center gap-2">
+              <button type="submit" form="slot-form" disabled={saving || hasErrors} className="btn-primary flex items-center gap-2">
                 {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle size={16} />}{saving ? t('saving') : t('create_slot', 'Create Slot')}
               </button>
             </div>

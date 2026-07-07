@@ -50,15 +50,24 @@ export default function GrainSalesAdmin() {
     if (!form.farmer_id || !form.raw_material_kg || !form.good_material_kg) {
       return toast.error('Please fill all required fields');
     }
+    
+    const rawQty = parseFloat(form.raw_material_kg) || 0;
+    const goodQty = parseFloat(form.good_material_kg) || 0;
+    const wastageQty = parseFloat(form.wastage_kg) || 0;
+
+    if (goodQty + wastageQty > rawQty) {
+      return toast.error('Good Quantity + Wastage cannot exceed Total Raw Material');
+    }
+
     setSaving(true);
     try {
       await api.post('/admin/grain-sales/procure', {
         farmer_id: parseInt(form.farmer_id),
         grain_type: form.grain_type,
         grade: form.grade,
-        raw_material_kg: parseFloat(form.raw_material_kg),
-        good_material_kg: parseFloat(form.good_material_kg),
-        wastage_kg: parseFloat(form.wastage_kg) || 0
+        raw_material_kg: rawQty,
+        good_material_kg: goodQty,
+        wastage_kg: wastageQty
       });
       toast.success('Crop procurement logged successfully!');
       setShowLogModal(false);

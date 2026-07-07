@@ -99,7 +99,7 @@ export default function MarketRates() {
               </div>
               <button onClick={() => setShowModal(false)} className="btn-icon"><X size={18} /></button>
             </div>
-            <form onSubmit={handleSubmit} className="modal-body space-y-4">
+            <form id="market-rate-form" onSubmit={handleSubmit} className="modal-body space-y-4">
               <div>
                 <label className="label">{t("crop_type")} *</label>
                 <select value={form.crop_type} onChange={e => setForm(f => ({ ...f, crop_type: e.target.value }))} className="input-field" disabled={!!form.id}>
@@ -119,7 +119,7 @@ export default function MarketRates() {
             </form>
             <div className="modal-footer">
               <button onClick={() => setShowModal(false)} className="btn-ghost">{t("cancel")}</button>
-              <button onClick={handleSubmit} disabled={saving} className="btn-primary flex items-center gap-2">
+              <button type="submit" form="market-rate-form" disabled={saving} className="btn-primary flex items-center gap-2">
                 {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle size={16} />}{saving ? t('saving') : t('save_rate')}
               </button>
             </div>
