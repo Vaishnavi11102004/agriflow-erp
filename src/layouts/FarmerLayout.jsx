@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Sprout, ShoppingCart, Calendar,
   History, User, LogOut, Menu, X, Globe,
-  MessageCircle, Leaf
+  Bot, Leaf
 } from 'lucide-react';
 import api from '../services/api/axios';
 import toast from 'react-hot-toast';
@@ -236,7 +236,7 @@ export default function FarmerLayout() {
           <div className="mb-3 bg-white rounded-2xl shadow-2xl border border-gray-200 w-72 sm:w-80 flex flex-col overflow-hidden animate-fade-in">
             <div className="bg-agro-green text-white p-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <MessageCircle size={18} />
+                <Bot size={18} />
                 <span className="font-semibold text-sm">{t('chatbot')}</span>
               </div>
               <button onClick={() => setChatOpen(false)} className="text-white/70 hover:text-white"><X size={16} /></button>
@@ -261,7 +261,7 @@ export default function FarmerLayout() {
         )}
         <button onClick={() => setChatOpen(v => !v)}
           className="w-12 h-12 sm:w-14 sm:h-14 bg-agro-green hover:bg-primary-700 text-white rounded-full shadow-green flex items-center justify-center transition-all duration-300 active:scale-95">
-          {chatOpen ? <X size={20} /> : <MessageCircle size={20} />}
+          {chatOpen ? <X size={20} /> : <Bot size={20} />}
         </button>
       </div>
     </div>

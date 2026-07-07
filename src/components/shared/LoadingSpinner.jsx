@@ -3,7 +3,7 @@ import { Leaf } from 'lucide-react';
 
 export default function LoadingSpinner({ fullHeight = false }) {
   return (
-    <div className={`flex items-center justify-center ${fullHeight ? 'min-h-screen' : 'h-64'}`}>
+    <div className={`flex items-center justify-center z-50 ${fullHeight ? 'fixed inset-0 bg-white/80' : 'absolute inset-0'}`}>
       <div className="relative flex items-center justify-center">
         {/* The spinning border */}
         <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin absolute"></div>
