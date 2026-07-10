@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 
 .git_disabled/
+
+supabase/.temp/
