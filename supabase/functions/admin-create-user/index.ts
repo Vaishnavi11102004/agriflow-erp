@@ -119,7 +119,9 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Auth creation failed: ' + authError.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const passHash = await bcrypt.hash(password);
+    // hashSync (not hash/genSalt) — the async variant spawns a Web Worker, which the
+    // Supabase Edge Runtime does not support and fails with "Worker is not defined".
+    const passHash = bcrypt.hashSync(password);
 
     // The database trigger automatically creates rows in public.users and public.profiles.
     // Fetch the newly created profile's app_user_id (integer ID)
