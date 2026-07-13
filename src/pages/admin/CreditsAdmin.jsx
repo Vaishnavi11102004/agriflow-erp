@@ -149,7 +149,49 @@ export default function CreditsAdmin() {
       </div>
 
       <div className="glass-card overflow-hidden">
-        <div className="table-container">
+        {/* Mobile cards */}
+        <div className="sm:hidden divide-y divide-gray-100">
+          {isLoading ? (
+            <div className="flex justify-center py-10"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>
+          ) : filtered.length === 0 ? (
+            <p className="text-center py-10 text-gray-400 text-sm">No transactions found.</p>
+          ) : (
+            filtered.map(tx => (
+              <div key={tx.id} className="p-4 flex flex-col gap-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="font-semibold text-gray-800">{tx.farmer_name}</div>
+                    <div className="text-xs text-gray-500">{tx.phone}</div>
+                  </div>
+                  <div className={`font-bold ${tx.direction === 'credit' ? 'text-green-600' : 'text-red-500'}`}>
+                    {tx.direction === 'credit' ? '+' : '-'}₹{(tx.amount || 0).toLocaleString('en-IN')}
+                  </div>
+                </div>
+                <div className="text-sm text-gray-700">
+                  {tx.description || '-'}
+                </div>
+                <div className="flex justify-between items-center mt-1">
+                  <div className="flex gap-2">
+                    <span className={`px-2 py-1 text-[10px] font-semibold rounded ${tx.direction === 'credit' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                      {tx.direction === 'credit' ? 'Credit' : 'Debit'}
+                    </span>
+                    <span className={`px-2 py-1 text-[10px] font-semibold rounded ${tx.status === 'completed' ? 'bg-blue-50 text-blue-700' : 'bg-yellow-50 text-yellow-700'}`}>
+                      {tx.status}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-400">{new Date(tx.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                    <button onClick={() => openEditModal(tx)} className="p-1.5 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-primary-600 transition-colors" title="Edit entry">
+                      <Pencil size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+        {/* Desktop table */}
+        <div className="hidden sm:block table-container">
           <table className="data-table">
             <thead>
               <tr>

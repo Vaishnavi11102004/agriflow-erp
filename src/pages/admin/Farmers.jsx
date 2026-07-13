@@ -86,6 +86,7 @@ export default function FarmersDirectory() {
       await managerService.approveFarmer(id, status, null, user?.id);
       toast.success(t('farmer') + ' ' + status);
       queryClient.invalidateQueries({ queryKey: ['admin-farmers'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
       if (selected === id) setDetail(d => ({ ...d, farmer: { ...d.farmer, status } }));
     } catch { toast.error(t('action_failed')); }
   };

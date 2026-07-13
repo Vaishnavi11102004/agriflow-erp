@@ -161,10 +161,9 @@ serve(async (req) => {
 
     if (action === 'getTransactions') {
       const { farmerId } = payload;
-      const { data, error } = await supabase.from('transactions').select('*, seed_purchases(invoice_number)').eq('farmer_id', farmerId).order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('transactions').select('*').eq('farmer_id', farmerId).order('created_at', { ascending: false });
       if (error) throw error;
-      const result = data.map(t => ({ ...t, invoice_number: t.invoice_number || (t.seed_purchases as any)?.invoice_number }));
-      return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (action === 'getVisits') {
