@@ -100,7 +100,7 @@ export default function SeedsInventory() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div><h1 className="page-title">{t('seeds_inventory')}</h1><p className="page-subtitle">{t("seeds_inventory_desc")}</p></div>
-        {user?.role === 'super_admin' && (
+        {(user?.role === 'super_admin' || user?.role === 'admin') && (
           <button onClick={openAdd} className="btn-primary flex items-center gap-2"><Plus size={16} />{t("add_seed")}</button>
         )}
       </div>
