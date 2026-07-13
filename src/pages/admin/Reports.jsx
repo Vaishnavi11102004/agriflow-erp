@@ -208,11 +208,11 @@ export default function Reports() {
           <h3 className="section-title">{t('active_crop_distribution')}</h3>
           <div className="flex items-center h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={dummyCropData} innerRadius={80} outerRadius={110} paddingAngle={2} dataKey="value">
-                  {dummyCropData.map((e, i) => <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />)}
+              <PieChart style={{ outline: 'none' }}>
+                <Pie data={dummyCropData} innerRadius={80} outerRadius={110} paddingAngle={2} dataKey="value" style={{ outline: 'none' }}>
+                  {dummyCropData.map((e, i) => <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} style={{ outline: 'none' }} />)}
                 </Pie>
-                <Tooltip formatter={v => [`${v}%`, 'Share']} />
+                <Tooltip formatter={v => [`${v}%`, 'Share']} cursor={false} contentStyle={{ outline: 'none' }} />
                 <Legend layout="vertical" verticalAlign="middle" align="right" />
               </PieChart>
             </ResponsiveContainer>

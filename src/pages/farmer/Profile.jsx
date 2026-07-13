@@ -10,7 +10,7 @@ import { CACHE_TIMES } from '../../lib/queryConfig';
 import {
   User, CreditCard, Save, AlertCircle, CheckCircle, Edit3, Sprout,
   FileText, UploadCloud, Link as LinkIcon, IndianRupee, ShoppingBag,
-  Calendar, TrendingUp, ArrowRight, MapPin, Bell
+  Calendar, TrendingUp, ArrowRight, MapPin, Bell, History, Wheat
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -145,6 +145,15 @@ export default function FarmerProfile() {
             <p className="text-gray-500 text-sm">{user?.phone}</p>
             <span className={`badge mt-1 ${user?.status === 'active' ? 'badge-green' : 'badge-yellow'}`}>{user?.status}</span>
           </div>
+        </div>
+
+        <div className="flex items-center gap-2 mb-4">
+          <Link to="/farmer/transactions" className="btn-secondary btn-sm flex items-center gap-2 flex-1 justify-center">
+            <History size={16} /> {t('view_transaction_history')}
+          </Link>
+          <Link to="/farmer/grain-sales" className="btn-secondary btn-sm flex items-center gap-2 flex-1 justify-center">
+            <Wheat size={16} /> {t('grain_sales')}
+          </Link>
         </div>
 
         <div className="flex items-center justify-between mb-4">

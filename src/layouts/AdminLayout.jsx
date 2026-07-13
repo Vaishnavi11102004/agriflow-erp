@@ -40,7 +40,7 @@ export default function AdminLayout() {
     { to: `${basePath}/warehouse`, icon: <Warehouse size={18} />, label: t('warehouse'), roles: ['manager', 'super_admin'] },
     { to: `${basePath}/booking-slots`, icon: <Calendar size={18} />, label: t('booking_slot'), roles: ['manager', 'super_admin'] },
     { to: `${basePath}/visits`, icon: <MapPin size={18} />, label: t('farm_visits'), roles: ['manager', 'super_admin'] },
-    { to: `${basePath}/reports`, icon: <BarChart2 size={18} />, label: t('reports'), roles: ['manager', 'super_admin'] },
+    { to: `${basePath}/reports`, icon: <BarChart2 size={18} />, label: t('reports'), roles: ['super_admin'] },
     { to: `${basePath}/market-rates`, icon: <TrendingUp size={18} />, label: t('market_rates'), roles: ['manager', 'super_admin'] },
     { to: `${basePath}/grain-sales`, icon: <Wheat size={18} />, label: t('grain_sales'), roles: ['super_admin'] },
     { to: `${basePath}/credits`, icon: <DollarSign size={18} />, label: t('credits') || 'Credits', roles: ['super_admin'] },
@@ -165,7 +165,7 @@ export default function AdminLayout() {
       </div>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex overflow-x-auto z-40 h-16 shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.05)] safe-area-pb hide-scrollbar">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex overflow-x-auto z-40 h-16 shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.05)] safe-area-pb">
         {visibleNavItems.filter(item => ['/visits', '/grain-sales', '/booking-slots', '/seed-purchases', '/seeds'].some(p => item.to.endsWith(p))).map(item => (
           <NavLink key={item.to} to={item.to} end={item.end}
             className={({ isActive }) => `flex-shrink-0 flex flex-col items-center justify-center w-[72px] h-full gap-1 transition-all ${isActive ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'}`}>

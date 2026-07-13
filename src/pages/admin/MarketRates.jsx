@@ -94,7 +94,7 @@ export default function MarketRates() {
                         <span className={`badge ${r.grade === 'A' ? 'badge-green' : r.grade === 'B' ? 'badge-yellow' : 'badge-gray'}`}>{t('grade')} {r.grade}</span>
                       </div>
                       <div className="flex items-center gap-4">
-                        <span className="font-bold text-gray-800">₹{r.price_per_kg}<span className="text-xs text-gray-500 font-normal">/kg</span></span>
+                        <span className="font-bold text-gray-800">₹{r.price_per_kg}<span className="text-xs text-gray-500 font-normal">/Quintals</span></span>
                         {user?.role === 'super_admin' && (
                           <div className="flex items-center gap-1">
                             <button onClick={() => openEdit(r)} className="p-1.5 rounded bg-white border border-gray-200 text-gray-500 hover:text-primary-600 hover:border-primary-200 shadow-sm transition-all"><Edit size={14} /></button>
@@ -138,7 +138,7 @@ export default function MarketRates() {
                   {GRADES.map(g => (
                     <div key={g} className="flex items-center gap-3">
                       <span className={`w-16 text-center text-xs font-bold px-2 py-1 rounded-full ${g === 'A' ? 'bg-green-100 text-green-700' : g === 'B' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>{t('grade')} {g}</span>
-                      <input type="number" value={bulkPrices[g]} onChange={e => setBulkPrices(p => ({ ...p, [g]: e.target.value }))} placeholder={`₹ per kg`} className="input-field flex-1" step="0.5" min="0.5" />
+                      <input type="number" value={bulkPrices[g]} onChange={e => setBulkPrices(p => ({ ...p, [g]: e.target.value }))} placeholder={`₹ per Quintals`} className="input-field flex-1" step="0.5" min="0.5" />
                     </div>
                   ))}
                 </div>
