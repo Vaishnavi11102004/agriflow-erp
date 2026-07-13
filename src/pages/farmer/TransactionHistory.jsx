@@ -2,28 +2,30 @@ import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import api from '../../services/api/axios';
-import { History, Download, ArrowUpCircle, ArrowDownCircle, Search } from 'lucide-react';
+import farmerService from '../../services/farmerService';
+import { useAuth } from '../../context/AuthContext';
+import { History, Download, ArrowUpCircle, ArrowDownCircle, Search, X, QrCode } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { downloadPDFReport } from '../../utils/pdfExport';
 
 export default function TransactionHistory() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [timeFilter, setTimeFilter] = useState('all');
+  const [selectedTx, setSelectedTx] = useState(null);
+  const [showQR, setShowQR] = useState(false);
 
   const { data: transactions = [], isLoading: loading } = useQuery({
-    queryKey: ['farmer-transactions'],
-    queryFn: async () => {
-      const res = await api.get('/farmer/transactions');
-      return res.data;
-    }
+    queryKey: ['farmer-transactions', user?.id],
+    queryFn: () => farmerService.getTransactions(user.id),
+    enabled: !!user?.id
   });
 
   const filtered = transactions.filter(t => {
     const matchFilter = filter === 'all' || t.direction === filter;
     const matchSearch = !search || t.description?.toLowerCase().includes(search.toLowerCase()) || t.transaction_id?.includes(search) || t.invoice_number?.includes(search);
-    
     let matchTime = true;
     if (timeFilter !== 'all') {
       const diffDays = Math.ceil(Math.abs(new Date() - new Date(t.created_at)) / (1000 * 60 * 60 * 24));
@@ -33,7 +35,6 @@ export default function TransactionHistory() {
       else if (timeFilter === '3months') matchTime = diffDays <= 90;
       else if (timeFilter === '6months') matchTime = diffDays <= 180;
     }
-
     return matchFilter && matchSearch && matchTime;
   });
 
@@ -41,196 +42,45 @@ export default function TransactionHistory() {
   const totalDebit = transactions.filter(t => t.direction === 'debit').reduce((s, t) => s + parseFloat(t.amount || 0), 0);
 
   const downloadCSV = () => {
-    if (filtered.length === 0) {
-      toast.error(t('no_logs_found', 'No transactions found to export.'));
-      return;
-    }
-
-    const periodLabel = {
-      'all': 'All Time',
-      '1week': 'Last 1 Week',
-      '1month': 'Last 1 Month',
-      '6weeks': 'Last 6 Weeks',
-      '3months': 'Last 3 Months',
-      '6months': 'Last 6 Months',
-    }[timeFilter] || 'All Time';
-
+    if (filtered.length === 0) { toast.error(t('no_logs_found', 'No transactions found to export.')); return; }
+    const periodLabel = { all: 'All Time', '1week': 'Last 1 Week', '1month': 'Last 1 Month', '6weeks': 'Last 6 Weeks', '3months': 'Last 3 Months', '6months': 'Last 6 Months' }[timeFilter] || 'All Time';
     const filteredCredit = filtered.filter(t => t.direction === 'credit').reduce((s, t) => s + parseFloat(t.amount || 0), 0);
     const filteredDebit = filtered.filter(t => t.direction === 'debit').reduce((s, t) => s + parseFloat(t.amount || 0), 0);
 
-    const tableRows = filtered.map(tx => `
-      <tr>
-        <td>${new Date(tx.created_at).toLocaleDateString('en-IN')}</td>
-        <td><span class="badge ${tx.direction === 'credit' ? 'badge-credit' : 'badge-debit'}">${tx.direction === 'credit' ? '↑ Credit' : '↓ Debit'}</span></td>
-        <td>${tx.description || '-'}</td>
-        <td>${tx.upi_id || '-'}</td>
-        <td style="font-family: monospace; font-size: 11px;">${tx.transaction_id || '-'}</td>
-        <td>${tx.invoice_number || '-'}</td>
-        <td style="font-weight: 700; color: ${tx.direction === 'credit' ? '#16a34a' : '#dc2626'};">
-          ${tx.direction === 'credit' ? '+' : '-'}₹${parseFloat(tx.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-        </td>
-        <td><span class="badge ${tx.status === 'completed' ? 'badge-success' : tx.status === 'failed' ? 'badge-failed' : 'badge-pending'}">${tx.status}</span></td>
-      </tr>
-    `).join('');
-
-    const htmlContent = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Transaction Report — AgriFlow ERP</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', 'Inter', system-ui, sans-serif; padding: 40px; color: #1e293b; background: #fff; max-width: 1100px; margin: auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #16a34a; padding-bottom: 20px; margin-bottom: 30px; }
-        .logo { font-size: 26px; font-weight: 800; color: #16a34a; letter-spacing: -0.5px; }
-        .logo span { color: #1e293b; }
-        .report-meta { text-align: right; }
-        .report-meta h2 { font-size: 22px; font-weight: 700; color: #334155; }
-        .report-meta p { font-size: 12px; color: #64748b; margin-top: 4px; }
-        .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 30px; }
-        .summary-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; text-align: center; }
-        .summary-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; font-weight: 600; margin-bottom: 8px; }
-        .summary-card .value { font-size: 24px; font-weight: 800; }
-        .summary-card .value.green { color: #16a34a; }
-        .summary-card .value.red { color: #dc2626; }
-        .summary-card .value.blue { color: #2563eb; }
-        .summary-card .value.purple { color: #7c3aed; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        thead th { background: #f1f5f9; text-align: left; padding: 12px 14px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; font-weight: 700; border-bottom: 2px solid #e2e8f0; }
-        tbody td { padding: 11px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
-        tbody tr:hover { background: #f8fafc; }
-        .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: capitalize; }
-        .badge-credit { background: #dcfce7; color: #16a34a; }
-        .badge-debit { background: #fee2e2; color: #dc2626; }
-        .badge-success { background: #dcfce7; color: #15803d; }
-        .badge-pending { background: #fef9c3; color: #a16207; }
-        .badge-failed { background: #fee2e2; color: #b91c1c; }
-        .footer { text-align: center; color: #94a3b8; font-size: 12px; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
-        .footer p { margin-bottom: 4px; }
-        @media print { body { padding: 20px; } .summary { grid-template-columns: repeat(4, 1fr); } }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <div class="logo">Agri<span>Flow</span> ERP</div>
-        <div class="report-meta">
-            <h2>Transaction Report</h2>
-            <p>Period: ${periodLabel} &nbsp;|&nbsp; Generated: ${new Date().toLocaleString('en-IN')}</p>
-        </div>
-    </div>
-
-    <div class="summary">
-        <div class="summary-card">
-            <div class="label">Total Earned</div>
-            <div class="value green">₹${filteredCredit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
-        </div>
-        <div class="summary-card">
-            <div class="label">Total Spent</div>
-            <div class="value red">₹${filteredDebit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
-        </div>
-        <div class="summary-card">
-            <div class="label">Net Balance</div>
-            <div class="value blue">₹${(filteredCredit - filteredDebit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
-        </div>
-        <div class="summary-card">
-            <div class="label">Transactions</div>
-            <div class="value purple">${filtered.length}</div>
-        </div>
-    </div>
-
-    <table>
-        <thead>
-            <tr>
-                <th>Date</th><th>Type</th><th>Description</th><th>UPI ID</th>
-                <th>Transaction ID</th><th>Invoice</th><th>Amount</th><th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            ${tableRows}
-        </tbody>
-    </table>
-
-    <div class="footer">
-        <p><strong>AgriFlow ERP</strong> — Agricultural Management Platform</p>
-        <p>This is a system-generated report. No signature required.</p>
-    </div>
-</body>
-</html>`;
-
-    const blob = new Blob([htmlContent], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `AgriFlow_Transactions_${periodLabel.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    downloadPDFReport({
+      title: `Transaction Ledger — ${periodLabel}`,
+      filtersText: `Period: ${periodLabel}${filter !== 'all' ? ` · Type: ${filter}` : ''}`,
+      summary: [
+        `Total Earned: Rs. ${filteredCredit.toLocaleString('en-IN')}`,
+        `Total Spent: Rs. ${filteredDebit.toLocaleString('en-IN')}`,
+        `Transactions: ${filtered.length}`,
+      ],
+      columns: ['Date', 'Type', 'Description', 'UPI ID', 'Transaction ID', 'Invoice', 'Amount', 'Status'],
+      rows: filtered.map(tx => [
+        new Date(tx.created_at).toLocaleDateString('en-IN'),
+        tx.direction === 'credit' ? 'Credit' : 'Debit',
+        tx.description || '-',
+        tx.upi_id || '-',
+        tx.transaction_id || '-',
+        tx.invoice_number || '-',
+        `${tx.direction === 'credit' ? '+' : '-'}Rs. ${parseFloat(tx.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+        tx.status,
+      ]),
+    }, `AgriFlow_Transactions_${periodLabel.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`);
   };
 
   const downloadInvoice = (tx) => {
-    const htmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Invoice ${tx.invoice_number}</title>
-    <style>
-        body { font-family: 'Inter', sans-serif; padding: 40px; color: #333; max-width: 800px; margin: auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #16a34a; padding-bottom: 20px; margin-bottom: 30px; }
-        .logo { font-size: 24px; font-weight: bold; color: #16a34a; }
-        .invoice-title { font-size: 28px; font-weight: bold; color: #1f2937; }
-        .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 40px; }
-        .detail-box { background: #f8fafc; padding: 15px; border-radius: 8px; }
-        .label { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
-        .value { font-size: 16px; font-weight: 600; color: #0f172a; }
-        .footer { text-align: center; color: #64748b; font-size: 14px; margin-top: 50px; border-top: 1px solid #e2e8f0; padding-top: 20px; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <div class="logo">AgriFlow ERP</div>
-        <div class="invoice-title">INVOICE</div>
-    </div>
-    
-    <div class="details-grid">
-        <div class="detail-box">
-            <div class="label">Invoice Number</div>
-            <div class="value">${tx.invoice_number}</div>
-        </div>
-        <div class="detail-box">
-            <div class="label">Date</div>
-            <div class="value">${new Date(tx.created_at).toLocaleString('en-IN')}</div>
-        </div>
-        <div class="detail-box">
-            <div class="label">Amount</div>
-            <div class="value" style="color: #16a34a; font-size: 20px;">₹${tx.amount}</div>
-        </div>
-        <div class="detail-box">
-            <div class="label">Status</div>
-            <div class="value">${tx.status.toUpperCase()}</div>
-        </div>
-    </div>
-    
-    <div style="background: #f1f5f9; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
-        <h3 style="margin-top: 0; color: #334155;">Description</h3>
-        <p style="margin-bottom: 0;">${tx.description}</p>
-        <p style="margin-bottom: 0; color: #64748b; font-size: 14px;">Transaction Type: ${tx.direction}</p>
-    </div>
-
-    <div class="footer">
-        <p>Thank you for using AgriFlow!</p>
-        <small>This is a computer-generated invoice and requires no signature.</small>
-    </div>
-</body>
-</html>`;
-    const blob = new Blob([htmlContent], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `Invoice_${tx.invoice_number}.html`; 
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    downloadPDFReport({
+      title: `Invoice ${tx.invoice_number}`,
+      filtersText: '',
+      summary: [
+        `Date: ${new Date(tx.created_at).toLocaleString('en-IN')}`,
+        `Amount: Rs. ${parseFloat(tx.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+        `Status: ${tx.status.toUpperCase()}`,
+      ],
+      columns: ['Invoice', 'Description', 'Transaction ID', 'UPI ID', 'Amount'],
+      rows: [[tx.invoice_number, tx.description || '-', tx.transaction_id || '-', tx.upi_id || '-', `Rs. ${parseFloat(tx.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`]],
+    }, `Invoice_${tx.invoice_number}`);
   };
 
   if (loading) return <LoadingSpinner />;
@@ -242,7 +92,6 @@ export default function TransactionHistory() {
         <button onClick={downloadCSV} className="btn-secondary flex items-center gap-2"><Download size={16} />{t('export_report', 'Export Report')}</button>
       </div>
 
-      {/* Summary */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="stat-card">
           <div className="stat-icon bg-green-500"><ArrowUpCircle size={22} /></div>
@@ -258,7 +107,6 @@ export default function TransactionHistory() {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="relative flex-1">
           <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -282,7 +130,31 @@ export default function TransactionHistory() {
       </div>
 
       <div className="glass-card overflow-hidden">
-        <div className="table-container">
+        {/* Mobile cards */}
+        <div className="sm:hidden divide-y divide-gray-100">
+          {filtered.length === 0
+            ? <p className="text-center py-10 text-gray-400 text-sm">{t('no_transactions_found')}</p>
+            : filtered.map(tx => (
+              <button key={tx.id} onClick={() => setSelectedTx(tx)} className="w-full text-left p-4 space-y-1 hover:bg-gray-50 transition-colors">
+                <div className="flex justify-between items-start">
+                  <span className={`inline-flex items-center gap-1 text-xs font-semibold ${tx.direction === 'credit' ? 'text-green-600' : 'text-red-500'}`}>
+                    {tx.direction === 'credit' ? <ArrowUpCircle size={13} /> : <ArrowDownCircle size={13} />}{t(tx.direction)}
+                  </span>
+                  <span className={`font-bold text-sm ${tx.direction === 'credit' ? 'text-green-600' : 'text-red-500'}`}>
+                    {tx.direction === 'credit' ? '+' : '-'}₹{parseFloat(tx.amount).toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-700 truncate">{tx.description || '-'}</p>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-400">{new Date(tx.created_at).toLocaleDateString('en-IN')}</span>
+                  <span className={`badge ${tx.status === 'completed' ? 'badge-green' : tx.status === 'pending' ? 'badge-yellow' : 'badge-red'}`}>{tx.status}</span>
+                </div>
+              </button>
+            ))
+          }
+        </div>
+        {/* Desktop table */}
+        <div className="hidden sm:block table-container">
           <table className="data-table">
             <thead><tr>
               <th>{t('date')}</th><th>{t('type')}</th><th>{t('description')}</th><th>{t('upi_id')}</th><th>{t('transaction_id')}</th><th>{t('invoice')}</th><th>{t('amount')}</th><th>{t('status')}</th>
@@ -295,8 +167,7 @@ export default function TransactionHistory() {
                     <td className="text-xs">{new Date(tx.created_at).toLocaleDateString('en-IN')}</td>
                     <td>
                       <span className={`inline-flex items-center gap-1 text-xs font-semibold ${tx.direction === 'credit' ? 'text-green-600' : 'text-red-500'}`}>
-                        {tx.direction === 'credit' ? <ArrowUpCircle size={14} /> : <ArrowDownCircle size={14} />}
-                        {t(tx.direction)}
+                        {tx.direction === 'credit' ? <ArrowUpCircle size={14} /> : <ArrowDownCircle size={14} />}{t(tx.direction)}
                       </span>
                     </td>
                     <td className="text-xs max-w-[180px] truncate">{tx.description || '-'}</td>
@@ -310,7 +181,10 @@ export default function TransactionHistory() {
                     <td className={`font-bold ${tx.direction === 'credit' ? 'text-green-600' : 'text-red-500'}`}>
                       {tx.direction === 'credit' ? '+' : '-'}₹{tx.amount.toLocaleString('en-IN')}
                     </td>
-                    <td><span className={`badge ${tx.status === 'completed' ? 'badge-green' : tx.status === 'pending' ? 'badge-yellow' : 'badge-red'}`}>{tx.status}</span></td>
+                    <td className="flex items-center gap-2">
+                      <span className={`badge ${tx.status === 'completed' ? 'badge-green' : tx.status === 'pending' ? 'badge-yellow' : 'badge-red'}`}>{tx.status}</span>
+                      <button onClick={() => { setSelectedTx(tx); setShowQR(true); }} className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-primary-600 transition-colors" title="View QR"><QrCode size={14} /></button>
+                    </td>
                   </tr>
                 ))
               }
@@ -318,6 +192,69 @@ export default function TransactionHistory() {
           </table>
         </div>
       </div>
+
+      {/* QR Modal */}
+      {selectedTx && showQR && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-4" onClick={() => setShowQR(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-xs text-center space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-gray-800">Payment QR</h3>
+              <button onClick={() => setShowQR(false)} className="btn-icon"><X size={18} /></button>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-4 flex flex-col items-center gap-3">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=agriflow@upi%26pn=AgriFlow%26am=${selectedTx.amount}%26tn=${encodeURIComponent(selectedTx.description || 'AgriFlow Payment')}`}
+                alt="Payment QR"
+                className="w-44 h-44 rounded-lg"
+              />
+              <p className="text-xs text-gray-500">Scan with any UPI app</p>
+              <p className="text-lg font-black text-primary-700">₹{parseFloat(selectedTx.amount).toLocaleString('en-IN')}</p>
+              <p className="text-xs text-gray-400 truncate max-w-full">{selectedTx.description || '-'}</p>
+            </div>
+            <p className="text-[10px] text-gray-400">This is a demo QR for reference only</p>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile transaction detail modal */}
+      {selectedTx && !showQR && (
+        <div className="sm:hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-4" onClick={() => setSelectedTx(null)}>
+          <div className="bg-white w-full rounded-2xl p-5 space-y-4 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-gray-800">{t('transaction_details', 'Transaction Details')}</h3>
+              <button onClick={() => setSelectedTx(null)} className="btn-icon"><X size={18} /></button>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className={`inline-flex items-center gap-1.5 text-sm font-semibold ${selectedTx.direction === 'credit' ? 'text-green-600' : 'text-red-500'}`}>
+                {selectedTx.direction === 'credit' ? <ArrowUpCircle size={16} /> : <ArrowDownCircle size={16} />}{t(selectedTx.direction)}
+              </span>
+              <span className={`text-xl font-black ${selectedTx.direction === 'credit' ? 'text-green-600' : 'text-red-500'}`}>
+                {selectedTx.direction === 'credit' ? '+' : '-'}₹{parseFloat(selectedTx.amount).toLocaleString('en-IN')}
+              </span>
+            </div>
+            <div className="space-y-2 text-sm">
+              {[
+                [t('description'), selectedTx.description || '-'],
+                [t('date'), new Date(selectedTx.created_at).toLocaleString('en-IN')],
+                [t('status'), selectedTx.status],
+                [t('upi_id'), selectedTx.upi_id || '-'],
+                [t('transaction_id'), selectedTx.transaction_id || '-'],
+                [t('invoice'), selectedTx.invoice_number || '-'],
+              ].map(([label, value]) => (
+                <div key={label} className="flex justify-between gap-4 py-2 border-b border-gray-100 last:border-0">
+                  <span className="text-gray-400 text-xs font-medium shrink-0">{label}</span>
+                  <span className="text-gray-800 font-semibold text-xs text-right break-all">{value}</span>
+                </div>
+              ))}
+            </div>
+            {selectedTx.invoice_number && (
+              <button onClick={() => downloadInvoice(selectedTx)} className="w-full btn-primary flex items-center justify-center gap-2">
+                <Download size={15} /> {t('download_invoice', 'Download Invoice')}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

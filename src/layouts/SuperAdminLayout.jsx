@@ -4,8 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Users, UserCheck, LogOut, Menu, X, Globe, Crown, DollarSign,
-  Package, Warehouse, Calendar, MapPin, BarChart2, TrendingUp, Wheat, FileText, User, ShoppingBag
+  Package, Warehouse, Calendar, MapPin, BarChart2, TrendingUp, Wheat, FileText, User, ShoppingBag, Database
 } from 'lucide-react';
+import NotificationCenter from '../components/shared/NotificationCenter';
 
 const LANGUAGES = [
   { code: 'en', label: 'English', flag: '🇬🇧' },
@@ -30,8 +31,13 @@ export default function SuperAdminLayout() {
     { type: 'header', label: t('super_admin_portal') || 'Super Admin' },
     { to: '/admin/dashboard', icon: <LayoutDashboard size={18} />, label: t('dashboard'), end: true },
     { to: '/admin/dashboard/managers', icon: <UserCheck size={18} />, label: t('manage_admins') },
-    { to: '/admin/dashboard/farmers', icon: <Globe size={18} />, label: t('farmers') },
+    { to: '/admin/dashboard/farmers', icon: <Users size={18} />, label: t('all_farmers') || 'All Farmers' },
     { to: '/admin/dashboard/credits', icon: <DollarSign size={18} />, label: t('credits') || 'Credits' },
+    { to: '/admin/dashboard/cache', icon: <Database size={18} />, label: 'Cache Management' },
+
+    // Settings Section
+    { type: 'header', label: t('settings') || 'Settings' },
+    { to: '/admin/dashboard/cache', icon: <Database size={18} />, label: 'Cache Management' },
 
     // Operational Section
     { type: 'header', label: t('operational_portal') || 'Operational Portal' },
@@ -114,7 +120,7 @@ export default function SuperAdminLayout() {
             })}
           </nav>
           <div className="p-3 border-t border-white/10">
-            <button onClick={() => { logout(); navigate('/'); }}
+            <button onClick={() => { navigate('/'); logout(); }}
               className="sidebar-link w-full text-red-300 hover:text-red-200 hover:bg-red-500/20">
               <LogOut size={18} /><span>Logout</span>
             </button>
@@ -155,6 +161,7 @@ export default function SuperAdminLayout() {
                 </div>
               )}
             </div>
+            <NotificationCenter />
             <div className="pl-2 border-l border-gray-200 ml-1 hidden sm:block">
               <p className="text-sm font-semibold text-gray-800 truncate max-w-[120px]">{user?.name}</p>
               <p className="text-xs text-gray-400">{user?.role}</p>
@@ -168,7 +175,7 @@ export default function SuperAdminLayout() {
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex overflow-x-auto z-40 h-16 shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.05)] safe-area-pb hide-scrollbar">
-        {navItems.filter(item => item.type !== 'header' && ['/visits', '/grain-sales', '/booking-slots', '/seed-purchases', '/seeds', '/farmers'].some(p => item.to.endsWith(p))).map(item => (
+        {navItems.filter(item => item.type !== 'header' && ['/visits', '/grain-sales', '/booking-slots', '/seed-purchases', '/seeds'].some(p => item.to.endsWith(p))).map(item => (
           <NavLink key={item.to} to={item.to} end={item.end}
             className={({ isActive }) => `flex-shrink-0 flex flex-col items-center justify-center w-[72px] h-full gap-1 transition-all ${isActive ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'}`}>
             {({ isActive }) => (

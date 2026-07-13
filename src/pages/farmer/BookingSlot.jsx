@@ -2,7 +2,9 @@ import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import api from '../../services/api/axios';
+import farmerService from '../../services/farmerService';
+import { useAuth } from '../../context/AuthContext';
+import { CACHE_TIMES } from '../../lib/queryConfig';
 import { Calendar, Plus, X, CheckCircle, Warehouse, AlertTriangle, Eye, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -10,6 +12,7 @@ const GRAIN_TYPES = ['Rice', 'Wheat', 'Maize', 'Cotton', 'Groundnut', 'Sugarcane
 
 export default function BookingSlot() {
   const { t } = useTranslation();
+  const { user, profile } = useAuth();
   const queryClient = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
@@ -20,12 +23,15 @@ export default function BookingSlot() {
   });
 
   const { data: slots = [], isLoading: slotsLoading } = useQuery({
-    queryKey: ['farmer-booking-slots'],
-    queryFn: async () => { const res = await api.get('/farmer/booking-slots'); return res.data; }
+    queryKey: ['farmer-booking-slots', user?.id],
+    queryFn: () => farmerService.getBookingSlots(user.id),
+    enabled: !!user?.id,
+    ...CACHE_TIMES.SHORT
   });
   const { data: warehouses = [], isLoading: whLoading } = useQuery({
     queryKey: ['farmer-warehouses'],
-    queryFn: async () => { const res = await api.get('/farmer/warehouses'); return res.data; }
+    queryFn: () => farmerService.getWarehouses(),
+    ...CACHE_TIMES.LONG
   });
   const loading = slotsLoading || whLoading;
 
@@ -35,21 +41,24 @@ export default function BookingSlot() {
 
   const handleBook = async (e) => {
     e.preventDefault();
-    if (capacityWarning) return toast.error(t('insufficient_capacity', { capacity: (available_kg / 1000).toFixed(1) }));
-    if (!form.booking_date || !form.warehouse_id || !form.quantity_kg) return toast.error(t('fill_required'));
+    if (!form.grain_type) return toast.error('Please select a grain type');
+    if (!form.booking_date) return toast.error('Please select a booking date');
+    if (!form.warehouse_id) return toast.error('Please select a warehouse');
+    if (!form.quantity_kg || parseFloat(form.quantity_kg) <= 0) return toast.error('Please enter a valid quantity');
+    if (capacityWarning) return toast.error(t('insufficient_capacity', { capacity: (available_kg / 100).toFixed(1) }));
     setSaving(true);
     try {
-      await api.post('/farmer/booking-slot', {
+      await farmerService.bookDeliverySlot(user.id, {
         booking_date: form.booking_date,
-        booking_date: form.booking_date,
+        delivery_address: profile?.address || '',
         grain_type: form.grain_type,
         warehouse_id: parseInt(form.warehouse_id),
         quantity_kg: parseFloat(form.quantity_kg)
       });
       toast.success(t('booking_created'));
-      setShowModal(false); 
+      setShowModal(false);
       queryClient.invalidateQueries({ queryKey: ['farmer-booking-slots'] });
-    } catch (err) { toast.error(err.response?.data?.error || t('booking_failed')); }
+    } catch (err) { toast.error(err.message || t('booking_failed')); }
     finally { setSaving(false); }
   };
 
@@ -61,7 +70,7 @@ export default function BookingSlot() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div><h1 className="page-title">{t('booking_slot')}</h1><p className="page-subtitle">{t('booking_slot_desc')}</p></div>
-        <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2"><Plus size={16} />{t('book_slot')}</button>
+        <button onClick={() => { setForm({ grain_sale_id: '', warehouse_id: '', grain_type: '', quantity_kg: '', booking_date: '' }); setShowModal(true); }} className="btn-primary flex items-center gap-2"><Plus size={16} />{t('book_slot')}</button>
       </div>
 
       {/* Warehouse Capacity Overview */}
@@ -82,9 +91,9 @@ export default function BookingSlot() {
                   style={{ width: `${pct}%` }} />
               </div>
               <div className="flex justify-between text-xs text-gray-500">
-                <span>{t('used_colon')} {(w.current_load_kg / 1000).toFixed(0)}T</span>
-                <span className="font-semibold text-primary-700">{t('available_colon')} {(w.available_kg / 1000).toFixed(0)}T</span>
-                <span>{t('total_colon')} {(w.total_capacity_kg / 1000).toFixed(0)}T</span>
+                <span>{t('used_colon')} {(w.current_load_kg / 100).toFixed(0)} Qtl</span>
+                <span className="font-semibold text-primary-700">{t('available_colon')} {(w.available_kg / 100).toFixed(0)} Qtl</span>
+                <span>{t('total_colon')} {(w.total_capacity_kg / 100).toFixed(0)} Qtl</span>
               </div>
             </div>
           );
@@ -94,7 +103,26 @@ export default function BookingSlot() {
       {/* Booking History */}
       <div className="glass-card overflow-hidden">
         <div className="p-5 border-b border-gray-100"><h3 className="font-semibold">{t('my_booking_slots')}</h3></div>
-        <div className="table-container">
+
+        {/* Mobile cards */}
+        <div className="sm:hidden divide-y divide-gray-100">
+          {slots.length === 0
+            ? <p className="text-center py-10 text-gray-400 text-sm">{t('no_slots_booked_yet')}</p>
+            : slots.map(s => (
+              <div key={s.id} className="p-4 flex justify-between items-center cursor-pointer" onClick={() => setSelectedSlot(s)}>
+                <div>
+                  <p className="font-semibold text-gray-800">{s.grain_type}</p>
+                  <p className="text-xs text-gray-500">{s.booking_date} · {s.quantity_kg} kg</p>
+                  <p className="text-xs text-gray-400">{s.warehouse_name}</p>
+                </div>
+                <span className={`badge ${statusBadge(s.status)}`}>{s.status}</span>
+              </div>
+            ))
+          }
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden sm:block table-container">
           <table className="data-table">
             <thead><tr>
               <th>{t('date')}</th><th>{t('grain_type')}</th><th>{t('quantity')}</th><th>{t('warehouse')}</th><th>{t('status')}</th><th>Actions</th>
@@ -108,11 +136,8 @@ export default function BookingSlot() {
                     <td>{s.grain_type}</td>
                     <td>{s.quantity_kg} kg</td>
                     <td><p className="font-medium">{s.warehouse_name}</p></td>
-
                     <td><span className={`badge ${statusBadge(s.status)}`}>{s.status}</span></td>
-                    <td>
-                      <button onClick={() => setSelectedSlot(s)} className="p-1.5 rounded-lg bg-gray-100 text-gray-500 hover:text-primary-600 hover:bg-primary-50" title="Details"><Eye size={14} /></button>
-                    </td>
+                    <td><button onClick={() => setSelectedSlot(s)} className="p-1.5 rounded-lg bg-gray-100 text-gray-500 hover:text-primary-600 hover:bg-primary-50" title="Details"><Eye size={14} /></button></td>
                   </tr>
                 ))
               }
@@ -123,7 +148,7 @@ export default function BookingSlot() {
 
       {/* Book Modal */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+        <div className="modal-overlay items-start pt-4 sm:items-center sm:pt-0" onClick={() => setShowModal(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div className="flex items-center gap-3">
@@ -151,10 +176,9 @@ export default function BookingSlot() {
                 <label className="label">{t('warehouse')} *</label>
                 <select value={form.warehouse_id} onChange={e => setForm(f => ({ ...f, warehouse_id: e.target.value }))} className="input-field" required>
                   <option value="" disabled>{t('select_warehouse')}</option>
-                  {warehouses.map(w => <option key={w.id} value={w.id}>{t('warehouse_available', { name: w.name, capacity: (w.available_kg / 1000).toFixed(0) })}</option>)}
+                  {warehouses.map(w => <option key={w.id} value={w.id}>{t('warehouse_available', { name: w.name, capacity: (w.available_kg / 100).toFixed(0) })}</option>)}
                 </select>
               </div>
-
               {form.warehouse_id && (
                 <div>
                   <label className="label">{t('quantity_kg')} *</label>
@@ -162,17 +186,11 @@ export default function BookingSlot() {
                     className={`input-field peer ${capacityWarning ? 'input-error' : ''}`} placeholder={t('quantity_in_kg')} min="1" max={available_kg} required />
                   {capacityWarning && (
                     <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                      <AlertTriangle size={12} />{t('exceeds_capacity', { capacity: (available_kg / 1000).toFixed(1) })}
-                    </p>
-                  )}
-                  {!capacityWarning && (
-                    <p className="mt-1 text-xs text-red-500 hidden peer-invalid:[&:not(:placeholder-shown)]:block">
-                      Invalid quantity (max {(available_kg || 0).toLocaleString()} kg)
+                      <AlertTriangle size={12} />{t('exceeds_capacity', { capacity: (available_kg / 100).toFixed(1) })}
                     </p>
                   )}
                 </div>
               )}
-
             </form>
             <div className="modal-footer">
               <button onClick={() => setShowModal(false)} className="btn-ghost">{t('cancel')}</button>
@@ -187,8 +205,8 @@ export default function BookingSlot() {
 
       {/* Detail Modal */}
       {selectedSlot && (
-        <div className="modal-overlay" onClick={() => setSelectedSlot(null)}>
-          <div className="modal-content max-w-lg" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay items-start pt-4 sm:items-center sm:pt-0" onClick={() => setSelectedSlot(null)}>
+          <div className="modal-content max-w-lg w-full mx-3 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3 className="font-bold text-gray-800 text-lg">{t('booking_details')}</h3>
               <button onClick={() => setSelectedSlot(null)} className="btn-icon"><X size={18} /></button>
@@ -201,7 +219,6 @@ export default function BookingSlot() {
                 <div><p className="text-xs text-gray-500 uppercase">{t('quantity_upper')}</p><p className="font-medium text-green-600">{selectedSlot.quantity_kg} kg</p></div>
                 <div><p className="text-xs text-gray-500 uppercase">{t('warehouse_upper')}</p><p className="font-medium">{selectedSlot.warehouse_name}</p></div>
                 <div><p className="text-xs text-gray-500 uppercase">{t('status_upper')}</p><span className={`badge ${statusBadge(selectedSlot.status)}`}>{selectedSlot.status}</span></div>
-
               </div>
             </div>
           </div>

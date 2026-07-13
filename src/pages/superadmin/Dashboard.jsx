@@ -1,7 +1,8 @@
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import api from '../../services/api/axios';
+import adminService from '../../services/adminService';
+import { CACHE_TIMES } from '../../lib/queryConfig';
 import { Users, Shield, Activity, Map, User } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -20,18 +21,14 @@ export default function SuperAdminDashboard() {
 
   const { data, isLoading: loading } = useQuery({
     queryKey: ['superadmin-dashboard'],
-    queryFn: async () => {
-      const res = await api.get('/admin/dashboard');
-      return res.data;
-    }
+    queryFn: () => adminService.getDashboard(),
+    ...CACHE_TIMES.SHORT
   });
 
   const { data: managers } = useQuery({
     queryKey: ['managers-list'],
-    queryFn: async () => {
-      const res = await api.get('/admin/managers');
-      return res.data;
-    }
+    queryFn: () => adminService.getManagers(),
+    ...CACHE_TIMES.MEDIUM
   });
 
   if (loading) return <LoadingSpinner />;

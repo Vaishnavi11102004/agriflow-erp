@@ -2,8 +2,10 @@ import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import api from '../../services/api/axios';
-import { ShoppingCart, X, CheckCircle, Search, Tag, Filter, Download, Warehouse } from 'lucide-react';
+import farmerService from '../../services/farmerService';
+import { useAuth } from '../../context/AuthContext';
+import { CACHE_TIMES } from '../../lib/queryConfig';
+import { ShoppingCart, X, CheckCircle, Search, Tag, Filter, Download, Warehouse, QrCode } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const GRAIN_PHOTOS = {
@@ -18,42 +20,51 @@ const GRAIN_PHOTOS = {
 
 export default function SeedPurchase() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState('');
   const [form, setForm] = useState({ quantity_kg: '', payment_method: 'upi', upi_id: '', transaction_id: '', warehouse_id: '' });
   const [saving, setSaving] = useState(false);
+  const [upiTouched, setUpiTouched] = useState(false);
+  const [upiSubmitError, setUpiSubmitError] = useState(false);
   const [tab, setTab] = useState('browse');
-  
+
   // Filter states
   const [showFilters, setShowFilters] = useState(false);
   const [maxPriceFilter, setMaxPriceFilter] = useState(10000);
   const [selectedCrops, setSelectedCrops] = useState([]);
   const [inStockOnly, setInStockOnly] = useState(false);
   const [selectedWarehouse, setSelectedWarehouse] = useState('');
+  const [selectedPurchase, setSelectedPurchase] = useState(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceHtml, setInvoiceHtml] = useState('');
+  const [qrTx, setQrTx] = useState(null);
   const [historyTimeFilter, setHistoryTimeFilter] = useState('all');
 
   const { data: seeds = [], isLoading: seedsLoading } = useQuery({
     queryKey: ['farmer-seeds'],
-    queryFn: async () => { const res = await api.get('/farmer/seeds'); return res.data; }
+    queryFn: () => farmerService.getSeeds(),
+    ...CACHE_TIMES.LONG
   });
-  
+
   const { data: purchases = [], isLoading: purchasesLoading } = useQuery({
     queryKey: ['farmer-seed-purchases'],
-    queryFn: async () => { const res = await api.get('/farmer/seed-purchases'); return res.data; }
+    queryFn: () => farmerService.getSeedPurchases(user?.id),
+    enabled: !!user?.id,
+    ...CACHE_TIMES.MEDIUM
   });
 
   const { data: warehouses = [] } = useQuery({
     queryKey: ['farmer-warehouses'],
-    queryFn: async () => { const res = await api.get('/farmer/warehouses'); return res.data; }
+    queryFn: () => farmerService.getWarehouses(),
+    ...CACHE_TIMES.LONG
   });
 
   const loading = seedsLoading || purchasesLoading;
 
-  const openBuy = (seed) => { setSelected(seed); setForm({ quantity_kg: '', payment_method: 'upi', upi_id: '', transaction_id: '', warehouse_id: '' }); setShowModal(true); };
+  const openBuy = (seed) => { setSelected(seed); setForm({ quantity_kg: '', payment_method: 'upi', upi_id: '', transaction_id: '', warehouse_id: '' }); setUpiTouched(false); setUpiSubmitError(false); setShowModal(true); };
 
   const quantityExceedsStock = selected && form.quantity_kg && parseFloat(form.quantity_kg) > selected.stock_kg;
 
@@ -62,17 +73,21 @@ export default function SeedPurchase() {
     if (!form.quantity_kg || parseFloat(form.quantity_kg) <= 0) return toast.error(t('enter_valid_quantity'));
     if (parseFloat(form.quantity_kg) > selected.stock_kg) return toast.error(t('quantity_exceeds_stock', `Quantity exceeds available stock (${selected.stock_kg} kg)`));
     if (form.payment_method === 'upi') {
-      if (!/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(form.upi_id)) return toast.error(t('invalid_upi_id'));
+      if (!/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(form.upi_id)) {
+        setUpiSubmitError(true);
+        return toast.error('Please enter a valid UPI ID');
+      }
     }
     setSaving(true);
     try {
-      const { data } = await api.post('/farmer/seed-purchase', {
+      const data = await farmerService.purchaseSeeds({
+        farmer_id: user?.id,
         seed_id: selected.id,
         quantity_kg: parseFloat(form.quantity_kg),
         payment_method: form.payment_method,
         upi_id: form.payment_method === 'upi' ? form.upi_id : null,
         transaction_id: form.payment_method === 'upi' ? form.transaction_id : null,
-        warehouse_id: form.warehouse_id,
+        warehouse_id: form.warehouse_id ? Number(form.warehouse_id) : null,
       });
       // Build invoice HTML for modal display
       const invoiceData = { ...data, seed_name: selected.name, variety: selected.variety, price_per_kg: selected.price_per_kg, quantity_kg: parseFloat(form.quantity_kg) };
@@ -82,12 +97,7 @@ export default function SeedPurchase() {
       queryClient.invalidateQueries({ queryKey: ['farmer-seeds'] });
       queryClient.invalidateQueries({ queryKey: ['farmer-seed-purchases'] });
     } catch (err) {
-      if (err.response?.data?.details && Array.isArray(err.response.data.details)) {
-        const fieldErrors = err.response.data.details.map(d => `${d.field}: ${d.message}`).join(', ');
-        toast.error(t('validation_failed', { errors: fieldErrors }));
-      } else {
-        toast.error(err.response?.data?.error || t('purchase_failed'));
-      }
+      toast.error(err.message || t('purchase_failed'));
     }
     finally { setSaving(false); }
   };
@@ -229,7 +239,7 @@ export default function SeedPurchase() {
 </html>`;
     const blob = new Blob([htmlContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `Invoice_${p.invoice_number}.html`; 
+    const a = document.createElement('a'); a.href = url; a.download = `Invoice_${p.invoice_number}.html`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -300,8 +310,8 @@ export default function SeedPurchase() {
               <div>
                 <h4 className="text-sm font-semibold text-gray-700 mb-3">{t('price_range')}</h4>
                 <div className="space-y-4">
-                  <input type="range" min="1" max={maxPrice} 
-                    value={maxPriceFilter === 10000 ? maxPrice : maxPriceFilter} 
+                  <input type="range" min="1" max={maxPrice}
+                    value={maxPriceFilter === 10000 ? maxPrice : maxPriceFilter}
                     onChange={e => setMaxPriceFilter(Number(e.target.value))}
                     className="w-full accent-primary-600" />
                   <div className="flex justify-between text-xs text-gray-500 font-medium">
@@ -318,7 +328,7 @@ export default function SeedPurchase() {
                   <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                     {cropTypes.map(crop => (
                       <label key={crop} className="flex items-center gap-3 cursor-pointer group">
-                        <input type="checkbox" 
+                        <input type="checkbox"
                           checked={selectedCrops.includes(crop)}
                           onChange={(e) => {
                             if (e.target.checked) setSelectedCrops([...selectedCrops, crop]);
@@ -339,7 +349,7 @@ export default function SeedPurchase() {
                   <select value={selectedWarehouse} onChange={e => setSelectedWarehouse(e.target.value)}
                     className="input-field text-sm">
                     <option value="">{t('all_warehouses', 'All Warehouses')}</option>
-                    {warehouses.map(w => (
+                    {warehouses.filter(w => seeds.some(s => String(s.warehouse_id) === String(w.id))).map(w => (
                       <option key={w.id} value={String(w.id)}>{w.name}</option>
                     ))}
                   </select>
@@ -350,7 +360,7 @@ export default function SeedPurchase() {
               <div>
                 <h4 className="text-sm font-semibold text-gray-700 mb-3">{t('availability') || 'Availability'}</h4>
                 <label className="flex items-center gap-3 cursor-pointer group">
-                  <input type="checkbox" 
+                  <input type="checkbox"
                     checked={inStockOnly}
                     onChange={(e) => setInStockOnly(e.target.checked)}
                     className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-gray-300 transition-colors cursor-pointer" />
@@ -366,7 +376,7 @@ export default function SeedPurchase() {
               <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('search_seeds_placeholder')} className="input-field pl-10" />
             </div>
-            
+
             {filtered.length === 0 ? (
               <div className="glass-card p-10 text-center flex flex-col items-center">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4"><Search size={24} className="text-gray-400" /></div>
@@ -380,7 +390,7 @@ export default function SeedPurchase() {
               <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-5">
                 {filtered.map(seed => {
                   const cropName = seed.name?.split(' ')[1] || seed.name?.split(' ')[0] || 'default';
-                  const photoUrl = GRAIN_PHOTOS[cropName] || GRAIN_PHOTOS.default;
+                  const photoUrl = seed.image_url || GRAIN_PHOTOS[cropName] || GRAIN_PHOTOS.default;
                   return (
                     <div key={seed.id} className="glass-card overflow-hidden hover-lift flex flex-col group">
                       <div className="h-24 sm:h-32 bg-gray-100 overflow-hidden relative">
@@ -395,6 +405,14 @@ export default function SeedPurchase() {
                           <span className="text-[10px] sm:text-xs font-semibold text-primary-700 bg-primary-50 px-1.5 sm:px-2 py-0.5 rounded-full shrink-0">{t('in_stock')}</span>
                         </div>
                         <p className="text-[10px] sm:text-xs text-gray-500 mb-2 sm:mb-4 flex-1 leading-relaxed line-clamp-2">{seed.description}</p>
+                        <div className="flex items-center gap-1 mb-2 sm:mb-3">
+                          <Warehouse size={12} className="text-gray-400 shrink-0" />
+                          {seed.warehouses?.length > 0 ? (
+                            <span className="text-[10px] sm:text-xs font-medium text-gray-600 truncate">{seed.warehouses.map(w => w.name).join(', ')}</span>
+                          ) : (
+                            <span className="text-[10px] sm:text-xs italic text-gray-400">{t('warehouse_not_assigned', 'Warehouse not assigned')}</span>
+                          )}
+                        </div>
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 sm:mb-4 gap-1">
                           <div>
                             <p className="text-lg sm:text-2xl font-bold text-agro-green">₹{seed.price_per_kg}<span className="text-[10px] sm:text-sm text-gray-400 font-normal">/kg</span></p>
@@ -430,21 +448,41 @@ export default function SeedPurchase() {
       {tab === 'history' && (
         <div className="glass-card overflow-hidden">
           <div className="p-4 border-b border-gray-100 flex items-center justify-between flex-wrap gap-4">
-             <h3 className="font-bold text-gray-800">{t('purchase_history')}</h3>
-             <select value={historyTimeFilter} onChange={e => setHistoryTimeFilter(e.target.value)} className="input-field max-w-xs text-sm py-2">
-               <option value="all">{t('all_time', 'All Time')}</option>
-               <option value="1week">{t('last_1_week', 'Last 1 Week')}</option>
-               <option value="1month">{t('last_1_month', 'Last 1 Month')}</option>
-               <option value="6weeks">{t('last_6_weeks', 'Last 6 Weeks')}</option>
-               <option value="3months">{t('last_3_months', 'Last 3 Months')}</option>
-               <option value="6months">{t('last_6_months', 'Last 6 Months')}</option>
-             </select>
+            <h3 className="font-bold text-gray-800">{t('purchase_history')}</h3>
+            <select value={historyTimeFilter} onChange={e => setHistoryTimeFilter(e.target.value)} className="input-field max-w-xs text-sm py-2">
+              <option value="all">{t('all_time', 'All Time')}</option>
+              <option value="1week">{t('last_1_week', 'Last 1 Week')}</option>
+              <option value="1month">{t('last_1_month', 'Last 1 Month')}</option>
+              <option value="6weeks">{t('last_6_weeks', 'Last 6 Weeks')}</option>
+              <option value="3months">{t('last_3_months', 'Last 3 Months')}</option>
+              <option value="6months">{t('last_6_months', 'Last 6 Months')}</option>
+            </select>
           </div>
-          <div className="table-container">
+          {/* Mobile cards */}
+          <div className="sm:hidden divide-y divide-gray-100">
+            {filteredPurchases.length === 0
+              ? <p className="text-center py-10 text-gray-400 text-sm">{t('no_purchases_found', 'No purchases found.')}</p>
+              : filteredPurchases.map(p => (
+                <button key={p.id} onClick={() => setSelectedPurchase(p)} className="w-full text-left p-4 space-y-1 hover:bg-gray-50 transition-colors">
+                  <div className="flex justify-between items-start">
+                    <div><p className="font-semibold text-gray-800">{p.seed_name}</p><p className="text-xs text-gray-400">{p.variety}</p></div>
+                    <span className={`badge ${p.payment_status === 'paid' ? 'badge-green' : p.payment_status === 'failed' ? 'badge-red' : 'badge-yellow'}`}>{p.payment_status === 'pending' ? t('pay_at_warehouse') : p.payment_status}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">{p.quantity_kg} kg × ₹{p.price_per_kg}</span>
+                    <span className="font-bold text-gray-800">₹{p.total_amount.toLocaleString('en-IN')}</span>
+                  </div>
+                  <span className="text-xs text-gray-400">{new Date(p.created_at).toLocaleDateString('en-IN')}</span>
+                </button>
+              ))
+            }
+          </div>
+          {/* Desktop table */}
+          <div className="hidden sm:block table-container">
             <table className="data-table">
               <thead><tr>
                 <th>{t('seed_name')}</th><th>{t('quantity')}</th><th>{t('price_per_kg')}</th><th>{t('total_amount')}</th>
-                <th>{t('upi_id')}</th><th>{t('transaction_id')}</th><th>{t('invoice')}</th><th>{t('status')}</th><th>{t('date')}</th>
+                <th>{t('upi_id')}</th><th>{t('transaction_id')}</th><th>{t('invoice')}</th><th>{t('status')}</th><th>{t('date')}</th><th>QR</th>
               </tr></thead>
               <tbody>
                 {filteredPurchases.length === 0
@@ -468,6 +506,9 @@ export default function SeedPurchase() {
                         </span>
                       </td>
                       <td className="text-xs">{new Date(p.created_at).toLocaleDateString('en-IN')}</td>
+                      <td>
+                        <button onClick={() => setQrTx(p)} className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-primary-600 transition-colors" title="View QR"><QrCode size={14} /></button>
+                      </td>
                     </tr>
                   ))
                 }
@@ -479,7 +520,7 @@ export default function SeedPurchase() {
 
       {/* Purchase Modal */}
       {showModal && selected && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+        <div className="modal-overlay items-start pt-4 sm:items-center sm:pt-0" onClick={() => setShowModal(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div className="flex items-center gap-3">
@@ -506,7 +547,7 @@ export default function SeedPurchase() {
                   </div>
                 </div>
               )}
-              
+
               <div>
                 <label className="label">{t('payment_method')}</label>
                 <div className="grid grid-cols-2 gap-3 mt-1">
@@ -528,28 +569,50 @@ export default function SeedPurchase() {
 
               <div>
                 <label className="label">{t('warehouse')} *</label>
-                <select value={form.warehouse_id || ''} onChange={e => setForm(f => ({ ...f, warehouse_id: e.target.value }))} className="input-field" required>
-                  <option value="">{t('select_warehouse', 'Select Warehouse')}</option>
-                  {warehouses.map(w => (
-                    <option key={w.id} value={w.id}>{w.name}</option>
-                  ))}
-                </select>
+                {selected.warehouses?.length > 0 ? (
+                  <select value={form.warehouse_id || ''} onChange={e => setForm(f => ({ ...f, warehouse_id: e.target.value }))} className="input-field" required>
+                    <option value="">{t('select_warehouse', 'Select Warehouse')}</option>
+                    {selected.warehouses.map(w => (
+                      <option key={w.id} value={w.id}>{w.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <>
+                    <select value={form.warehouse_id || ''} onChange={e => setForm(f => ({ ...f, warehouse_id: e.target.value }))} className="input-field">
+                      <option value="">{t('select_warehouse', 'Select Warehouse')}</option>
+                      {warehouses.map(w => (
+                        <option key={w.id} value={w.id}>{w.name}</option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-amber-600 mt-1">{t('warehouse_not_assigned_hint', 'No warehouse assigned yet — pick one for pickup.')}</p>
+                  </>
+                )}
+                <p className="text-xs text-gray-400 mt-1">{t('seed_stocked_at_hint', "This is where this seed's stock is kept.")}</p>
               </div>
 
+              {form.payment_method === 'upi' && form.quantity_kg && !quantityExceedsStock && (
+                <div className="flex flex-col items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                  <p className="text-xs text-gray-500 font-medium">Scan to Pay ₹{total}</p>
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=agriflow@upi%26pn=AgriFlow%26am=${total}%26tn=${encodeURIComponent('Seed Purchase: ' + (selected?.name || ''))}`}
+                    alt="UPI QR" className="w-32 h-32 rounded-lg"
+                  />
+                  <p className="text-[10px] text-gray-400">Demo QR — for reference only</p>
+                </div>
+              )}
               {form.payment_method === 'upi' && (
-                <>
-                  <div>
-                    <label className="label">{t('upi_id')} *</label>
-                    <input value={form.upi_id} onChange={e => setForm(f => ({ ...f, upi_id: e.target.value }))}
-                      className="input-field peer" placeholder="farmer@upi" 
-                      pattern="^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$" 
-                      title="Please enter a valid UPI ID (e.g. user@okicici)" required />
-                    <p className="mt-1 text-xs text-red-500 hidden peer-invalid:[&:not(:placeholder-shown)]:block">
-                      {t('invalid_upi_id', 'Invalid UPI ID format')}
-                    </p>
-                  </div>
-                  
-                </>
+                <div>
+                  <label className="label">{t('upi_id')} *</label>
+                  <input
+                    value={form.upi_id}
+                    onChange={e => { setForm(f => ({ ...f, upi_id: e.target.value })); setUpiTouched(true); setUpiSubmitError(false); }}
+                    className="input-field"
+                    placeholder="farmer@upi"
+                  />
+                  {(upiSubmitError || (upiTouched && form.upi_id && !/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(form.upi_id))) && (
+                    <p className="mt-1 text-xs text-red-500">Please enter a valid UPI ID</p>
+                  )}
+                </div>
               )}
             </form>
             <div className="modal-footer">
@@ -563,9 +626,31 @@ export default function SeedPurchase() {
         </div>
       )}
 
+      {/* QR Modal */}
+      {qrTx && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-4" onClick={() => setQrTx(null)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-xs text-center space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-gray-800">Payment QR</h3>
+              <button onClick={() => setQrTx(null)} className="btn-icon"><X size={18} /></button>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-4 flex flex-col items-center gap-3">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=agriflow@upi%26pn=AgriFlow%26am=${qrTx.total_amount}%26tn=${encodeURIComponent('Seed: ' + (qrTx.seed_name || ''))}`}
+                alt="Payment QR" className="w-44 h-44 rounded-lg"
+              />
+              <p className="text-xs text-gray-500">Scan with any UPI app</p>
+              <p className="text-lg font-black text-primary-700">₹{parseFloat(qrTx.total_amount).toLocaleString('en-IN')}</p>
+              <p className="text-xs text-gray-400 truncate max-w-full">{qrTx.seed_name}</p>
+            </div>
+            <p className="text-[10px] text-gray-400">Demo QR — for reference only</p>
+          </div>
+        </div>
+      )}
+
       {/* Invoice Modal */}
       {showInvoiceModal && (
-        <div className="modal-overlay" style={{ zIndex: 9999 }} onClick={() => setShowInvoiceModal(false)}>
+        <div className="modal-overlay items-start pt-4 sm:items-center sm:pt-0" style={{ zIndex: 9999 }} onClick={() => setShowInvoiceModal(false)}>
           <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
               <div className="flex items-center gap-3">
@@ -599,10 +684,49 @@ export default function SeedPurchase() {
               }} className="btn-ghost flex items-center gap-2">
                 <Download size={16} /> {t('download', 'Download')}
               </button>
-              <button onClick={() => setShowInvoiceModal(false)} className="btn-primary flex items-center gap-2">
-                <X size={16} /> {t('close', 'Close')}
-              </button>
+              <button onClick={() => setShowInvoiceModal(false)} className="btn-primary">{t('done', 'Done')}</button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Mobile purchase detail modal */}
+      {selectedPurchase && (
+        <div className="sm:hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-4" onClick={() => setSelectedPurchase(null)}>
+          <div className="bg-white w-full rounded-2xl p-5 space-y-4 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-gray-800">{t('purchase_details', 'Purchase Details')}</h3>
+              <button onClick={() => setSelectedPurchase(null)} className="btn-icon"><X size={18} /></button>
+            </div>
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="font-bold text-gray-800">{selectedPurchase.seed_name}</p>
+                <p className="text-xs text-gray-400">{selectedPurchase.variety}</p>
+              </div>
+              <span className={`badge ${selectedPurchase.payment_status === 'paid' ? 'badge-green' : selectedPurchase.payment_status === 'failed' ? 'badge-red' : 'badge-yellow'}`}>
+                {selectedPurchase.payment_status === 'pending' ? t('pay_at_warehouse') : selectedPurchase.payment_status}
+              </span>
+            </div>
+            <div className="space-y-2 text-sm">
+              {[
+                [t('quantity'), `${selectedPurchase.quantity_kg} kg`],
+                [t('price_per_kg'), `₹${selectedPurchase.price_per_kg}`],
+                [t('total_amount'), `₹${parseFloat(selectedPurchase.total_amount).toLocaleString('en-IN')}`],
+                [t('date'), new Date(selectedPurchase.created_at).toLocaleString('en-IN')],
+                [t('upi_id'), selectedPurchase.upi_id || '-'],
+                [t('transaction_id'), selectedPurchase.transaction_id || '-'],
+                [t('invoice'), selectedPurchase.invoice_number || '-'],
+              ].map(([label, value]) => (
+                <div key={label} className="flex justify-between gap-4 py-2 border-b border-gray-100 last:border-0">
+                  <span className="text-gray-400 text-xs font-medium shrink-0">{label}</span>
+                  <span className="text-gray-800 font-semibold text-xs text-right break-all">{value}</span>
+                </div>
+              ))}
+            </div>
+            {selectedPurchase.invoice_number && (
+              <button onClick={() => downloadInvoice(selectedPurchase)} className="w-full btn-primary flex items-center justify-center gap-2">
+                <Download size={15} /> {t('download_invoice', 'Download Invoice')}
+              </button>
+            )}
           </div>
         </div>
       )}

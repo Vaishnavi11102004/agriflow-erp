@@ -1,33 +1,27 @@
 import { useState, useEffect, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, CheckCircle, Info, AlertTriangle, XCircle, Check } from 'lucide-react';
-import api from '../../services/api/axios';
+import notificationService from '../../services/notificationService';
+import adminService from '../../services/adminService';
+import managerService from '../../services/managerService';
 import { useAuth } from '../../context/AuthContext';
+import { CACHE_TIMES } from '../../lib/queryConfig';
 
 export default function NotificationCenter() {
   const { user } = useAuth();
-  const [notifications, setNotifications] = useState([]);
+  const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedNotif, setSelectedNotif] = useState(null);
   const dropdownRef = useRef(null);
 
-  const fetchNotifications = async () => {
-    if (!user) return;
-    try {
-      // both /api/farmer/notifications and /api/admin/notifications exist depending on role
-      const endpoint = user.role === 'farmer' ? '/farmer/notifications' : '/admin/notifications';
-      const res = await api.get(endpoint);
-      setNotifications(res.data);
-    } catch (err) {
-      console.error('Failed to fetch notifications', err);
-    }
-  };
-
-  useEffect(() => {
-    fetchNotifications();
-    // Poll every 30 seconds
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, [user]);
+  const notifKey = ['notifications', user?.id];
+  const { data: notifications = [] } = useQuery({
+    queryKey: notifKey,
+    queryFn: () => notificationService.getNotifications(user.id),
+    enabled: !!user?.id,
+    refetchInterval: 30_000, // notifications benefit from feeling live
+    ...CACHE_TIMES.REALTIME
+  });
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -39,11 +33,19 @@ export default function NotificationCenter() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const markOneRead = async (notifId) => {
+    try {
+      await notificationService.markSingleRead(user.id, notifId);
+      queryClient.setQueryData(notifKey, (prev = []) => prev.map(n => n.id === notifId ? { ...n, is_read: true } : n));
+    } catch (err) {
+      console.error('Failed to mark notification read', err);
+    }
+  };
+
   const markAllRead = async () => {
     try {
-      const endpoint = user.role === 'farmer' ? '/farmer/notifications/read' : '/admin/notifications/read';
-      await api.patch(endpoint);
-      setNotifications(notifications.map(n => ({ ...n, is_read: 1 })));
+      await notificationService.markAllRead(user.id);
+      queryClient.setQueryData(notifKey, (prev = []) => prev.map(n => ({ ...n, is_read: true })));
     } catch (err) {
       console.error('Failed to mark read', err);
     }
@@ -60,21 +62,22 @@ export default function NotificationCenter() {
     }
   };
 
-  const handleAction = async (notif, status) => {
+  const handleAction = async (notif, approve) => {
     try {
+      const adminId = user.id;
       if (notif.reference_type === 'farmer') {
-        await api.patch(`/admin/farmers/${notif.reference_id}/approve`, { status });
+        await managerService.approveFarmer(notif.reference_id, approve ? 'active' : 'rejected', null, adminId);
       } else if (notif.reference_type === 'bank_request') {
-        await api.patch(`/admin/bank-requests/${notif.reference_id}`, { status });
+        await managerService.reviewBankRequest(notif.reference_id, approve ? 'approved' : 'rejected', null, adminId);
       } else if (notif.reference_type === 'booking_slot') {
-        await api.patch(`/admin/booking-slots/${notif.reference_id}`, { status });
+        await managerService.updateBookingStatus(notif.reference_id, approve ? 'confirmed' : 'cancelled', null, user.name, adminId);
       } else if (notif.reference_type === 'seed_purchase') {
-        await api.patch(`/admin/seed-purchases/${notif.reference_id}`, { status });
+        await adminService.updateSeedPurchaseStatus(notif.reference_id, approve ? 'paid' : 'failed', adminId);
       }
-      
-      // Mark this specific notification as read so it doesn't prompt again
-      await api.patch(`/admin/notifications/read`); // Simplified, usually you'd read a specific one, but for now we can just refresh
-      fetchNotifications();
+
+      // Mark this specific notification as read
+      await markOneRead(notif.id);
+      queryClient.invalidateQueries({ queryKey: notifKey });
       if (selectedNotif && selectedNotif.id === notif.id) {
         setSelectedNotif(null);
       }
@@ -87,8 +90,7 @@ export default function NotificationCenter() {
     setSelectedNotif(notif);
     setIsOpen(false);
     if (!notif.is_read) {
-      // Opt: mark this single notification as read if there was an endpoint, but we'll leave it 
-      // or we can mark all read. For now, just opening the modal is fine.
+      markOneRead(notif.id);
     }
   };
 
@@ -192,14 +194,14 @@ export default function NotificationCenter() {
             {(user?.role === 'super_admin' || (user?.role === 'manager' && selectedNotif.reference_type !== 'bank_request')) && 
              selectedNotif.reference_type && selectedNotif.reference_id && !selectedNotif.is_read && (
               <div className="p-5 border-t border-gray-100 bg-gray-50 flex gap-3">
-                <button 
-                  onClick={() => handleAction(selectedNotif, selectedNotif.reference_type === 'farmer' ? 'active' : selectedNotif.reference_type === 'booking_slot' ? 'confirmed' : 'approved')}
+                <button
+                  onClick={() => handleAction(selectedNotif, true)}
                   className="btn-primary flex-1"
                 >
                   Approve / Confirm
                 </button>
-                <button 
-                  onClick={() => handleAction(selectedNotif, selectedNotif.reference_type === 'booking_slot' ? 'cancelled' : 'rejected')}
+                <button
+                  onClick={() => handleAction(selectedNotif, false)}
                   className="btn-danger flex-1"
                 >
                   Reject / Cancel

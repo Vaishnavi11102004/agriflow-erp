@@ -3,10 +3,23 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
-import api from '../../services/api/axios';
-import { User, CreditCard, Save, AlertCircle, CheckCircle, Edit3, Sprout, FileText, UploadCloud, Link as LinkIcon } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import farmerService from '../../services/farmerService';
+import storageService from '../../services/storageService';
+import { CACHE_TIMES } from '../../lib/queryConfig';
+import {
+  User, CreditCard, Save, AlertCircle, CheckCircle, Edit3, Sprout,
+  FileText, UploadCloud, Link as LinkIcon, IndianRupee, ShoppingBag,
+  Calendar, TrendingUp, ArrowRight, MapPin, Bell
+} from 'lucide-react';
 import toast from 'react-hot-toast';
-import FarmerDashboard from './Dashboard';
+
+function getDaysUntil(dateStr) {
+  if (!dateStr) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const target = new Date(dateStr); target.setHours(0,0,0,0);
+  return Math.round((target - today) / 86400000);
+}
 
 export default function FarmerProfile() {
   const { t } = useTranslation();
@@ -23,11 +36,17 @@ export default function FarmerProfile() {
   const [docForm, setDocForm] = useState({});
 
   const { data: rawData, isLoading: loading } = useQuery({
-    queryKey: ['farmer-profile'],
-    queryFn: async () => {
-      const res = await api.get('/farmer/profile');
-      return res.data;
-    }
+    queryKey: ['farmer-profile', user?.id],
+    queryFn: () => farmerService.getProfile(user.id),
+    enabled: !!user?.id,
+    ...CACHE_TIMES.MEDIUM
+  });
+
+  const { data: dash } = useQuery({
+    queryKey: ['farmer-dashboard', user?.id],
+    queryFn: () => farmerService.getDashboard(user.id),
+    ...CACHE_TIMES.SHORT,
+    enabled: !!user?.id
   });
 
   useEffect(() => {
@@ -35,7 +54,7 @@ export default function FarmerProfile() {
       setProfile(rawData.profile);
       setPersonalForm({ name: rawData.user?.name, email: rawData.user?.email, address: rawData.profile?.address, acres_of_land: rawData.profile?.acres_of_land, crop_address: rawData.profile?.crop_address });
       setBankForm({ bank_name: rawData.profile?.bank_name || '', account_number: rawData.profile?.account_number || '', ifsc_code: rawData.profile?.ifsc_code || '', upi_id: rawData.profile?.upi_id || '' });
-      setAgriForm({ soil_type: rawData.profile?.soil_type || '', irrigation_type: rawData.profile?.irrigation_type || '', primary_crop: rawData.profile?.primary_crop || '', secondary_crop: rawData.profile?.secondary_crop || '' });
+      setAgriForm({ soil_type: rawData.profile?.soil_type || '', irrigation_type: rawData.profile?.irrigation_type || '', primary_crop: rawData.profile?.primary_crop || '', secondary_crop: rawData.profile?.secondary_crop || '', acres_of_land: rawData.profile?.acres_of_land || '' });
       setDocForm({ aadhaar_card_url: rawData.profile?.aadhaar_card_url || '', bank_passbook_url: rawData.profile?.bank_passbook_url || '', land_ownership_url: rawData.profile?.land_ownership_url || '' });
     }
   }, [rawData]);
@@ -43,10 +62,11 @@ export default function FarmerProfile() {
   const savePersonal = async () => {
     setSaving(true);
     try {
-      await api.patch('/farmer/profile', personalForm);
+      const { acres_of_land, ...personalOnly } = personalForm;
+      await farmerService.updateProfile(user.id, personalOnly);
       toast.success(t('profile_updated'));
       setEditPersonal(false);
-      queryClient.invalidateQueries({ queryKey: ['farmer-profile'] }); 
+      queryClient.invalidateQueries({ queryKey: ['farmer-profile'] });
       refreshProfile();
     } catch { toast.error(t('update_failed')); }
     finally { setSaving(false); }
@@ -55,7 +75,8 @@ export default function FarmerProfile() {
   const saveAgri = async () => {
     setSaving(true);
     try {
-      await api.patch('/farmer/profile', agriForm);
+      const { acres_of_land, ...agriOnly } = agriForm;
+      await farmerService.updateProfile(user.id, { ...agriOnly, acres_of_land });
       toast.success(t('agri_details_updated'));
       setEditAgri(false);
       queryClient.invalidateQueries({ queryKey: ['farmer-profile'] });
@@ -67,37 +88,37 @@ export default function FarmerProfile() {
   const handleFileUpload = async (e, field) => {
     const file = e.target.files[0];
     if (!file) return;
-    
-    if (file.size > 5 * 1024 * 1024) return toast.error(t('file_size_limit'));
-
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64 = reader.result;
-      const toastId = toast.loading(t('uploading_file', { name: file.name }));
-      try {
-        const uploadRes = await api.post('/upload', { image: base64 });
-        const fileUrl = uploadRes.data.url;
-        
-        setDocForm(prev => ({ ...prev, [field]: fileUrl }));
-        await api.patch('/farmer/profile', { [field]: fileUrl });
-        
-        toast.success(t('file_uploaded_success'), { id: toastId });
-        queryClient.invalidateQueries({ queryKey: ['farmer-profile'] });
-        refreshProfile();
-      } catch (err) {
-        toast.error(t('upload_failed'), { id: toastId });
-      }
-    };
-    reader.readAsDataURL(file);
+    if (file.size > 5 * 1024 * 1024) return toast.error('File size should be less than 5 MB');
+    try {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        try {
+          const { url } = await storageService.uploadBase64(ev.target.result, 'document');
+          setDocForm(prev => ({ ...prev, [field]: url }));
+          await farmerService.updateProfile(user.id, { [field]: url });
+          toast.success('File uploaded successfully');
+          queryClient.invalidateQueries({ queryKey: ['farmer-profile'] });
+          refreshProfile();
+        } catch (err) {
+          console.error("Upload Error:", err);
+          toast.error('Upload failed');
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      toast.error('Upload failed');
+    }
   };
+
+
 
   const requestBankChange = async () => {
     if (!bankForm.bank_name || !bankForm.account_number || !bankForm.ifsc_code) return toast.error(t('fill_bank_fields'));
     setSaving(true);
     try {
-      await api.post('/farmer/bank-change-request', bankForm);
+      await farmerService.requestBankChange({ ...bankForm, farmer_id: user.id });
       toast.success(t('bank_change_submitted'));
-      setEditBank(false); 
+      setEditBank(false);
       queryClient.invalidateQueries({ queryKey: ['farmer-profile'] });
     } catch { toast.error(t('request_failed')); }
     finally { setSaving(false); }
@@ -107,15 +128,10 @@ export default function FarmerProfile() {
 
   return (
     <div className="animate-fade-in max-w-5xl mx-auto space-y-8">
-      
-      {/* Farm Overview Dashboard Component */}
-      <FarmerDashboard />
-
-      <hr className="border-gray-200 my-8" />
 
       <div>
         <div className="page-header mb-6">
-          <div><h1 className="page-title">{t('profile_settings')}</h1><p className="page-subtitle">{t('profile_settings_desc')}</p></div>
+          <div><h1 className="page-title">Account Details</h1><p className="page-subtitle">{t('profile_settings_desc')}</p></div>
         </div>
 
       {/* Profile Card */}
@@ -144,7 +160,7 @@ export default function FarmerProfile() {
               <div><label className="label">{t('full_name')}</label><input value={personalForm.name || ''} onChange={e => setPersonalForm(f => ({ ...f, name: e.target.value }))} className="input-field" /></div>
               <div><label className="label">{t('email')}</label><input value={personalForm.email || ''} onChange={e => setPersonalForm(f => ({ ...f, email: e.target.value }))} className="input-field" type="email" /></div>
               <div className="col-span-2"><label className="label">{t('address')}</label><input value={personalForm.address || ''} onChange={e => setPersonalForm(f => ({ ...f, address: e.target.value }))} className="input-field" /></div>
-              <div><label className="label">{t('acres_of_land')}</label><input type="number" value={personalForm.acres_of_land || ''} onChange={e => setPersonalForm(f => ({ ...f, acres_of_land: e.target.value }))} className="input-field" step="0.5" /></div>
+
               <div><label className="label">{t('farm_location')}</label><input value={personalForm.crop_address || ''} onChange={e => setPersonalForm(f => ({ ...f, crop_address: e.target.value }))} className="input-field" /></div>
             </div>
             <button onClick={savePersonal} disabled={saving} className="btn-primary flex items-center gap-2">
@@ -157,7 +173,6 @@ export default function FarmerProfile() {
               { label: t('email'), value: user?.email || t('not_set') },
               { label: t('phone'), value: user?.phone },
               { label: t('address'), value: profile?.address || t('not_set') },
-              { label: t('acres_of_land'), value: profile?.acres_of_land ? `${profile.acres_of_land} ${t('acres_lower')}` : t('not_set') },
               { label: t('farm_location'), value: profile?.crop_address || t('not_set') },
             ].map(f => (
               <div key={f.label} className="col-span-1">
@@ -181,7 +196,7 @@ export default function FarmerProfile() {
         {editAgri ? (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="label">{t('land_size')}</label><input type="number" value={personalForm.acres_of_land || ''} onChange={e => setPersonalForm(f => ({ ...f, acres_of_land: e.target.value }))} className="input-field" step="0.5" /></div>
+              <div><label className="label">{t('land_size')}</label><input type="number" value={agriForm.acres_of_land || ''} onChange={e => setAgriForm(f => ({ ...f, acres_of_land: e.target.value }))} className="input-field" step="0.5" /></div>
               <div><label className="label">{t('soil_type')}</label><input value={agriForm.soil_type || ''} onChange={e => setAgriForm(f => ({ ...f, soil_type: e.target.value }))} className="input-field" placeholder={t('soil_type_placeholder')} /></div>
               <div>
                 <label className="label">{t('irrigation_type')}</label>
@@ -283,6 +298,7 @@ export default function FarmerProfile() {
               <div>
                 <p className="font-medium text-gray-800 text-sm">{doc.label}</p>
                 <p className="text-xs text-gray-500">{doc.desc}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">PDF / JPG / PNG · Max 5 MB</p>
                 {docForm[doc.id] && (
                   <a href={docForm[doc.id]} target="_blank" rel="noreferrer" className="text-xs text-blue-500 flex items-center gap-1 mt-1 hover:underline">
                     <LinkIcon size={12} /> {t('view_uploaded_doc')}
@@ -295,7 +311,7 @@ export default function FarmerProfile() {
                   <input 
                     type="file" 
                     className="hidden" 
-                    accept="image/*,.pdf" 
+                    accept="image/png,image/jpeg,image/jpg,.pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
                     onChange={e => handleFileUpload(e, doc.id)}
                   />
                 </label>

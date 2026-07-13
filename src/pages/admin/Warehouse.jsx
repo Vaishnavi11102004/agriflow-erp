@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import api from '../../services/api/axios';
+import warehouseService from '../../services/warehouseService';
+import { CACHE_TIMES } from '../../lib/queryConfig';
 import { Warehouse, Plus, X, CheckCircle, PackageSearch } from 'lucide-react';
 import toast from 'react-hot-toast';
 import validators from '../../utils/validators';
@@ -41,19 +42,15 @@ export default function WarehouseManagement() {
 
   const { data: warehouses = [], isLoading: loading } = useQuery({
     queryKey: ['admin-warehouses'],
-    queryFn: async () => {
-      const res = await api.get('/admin/warehouses');
-      return res.data;
-    }
+    queryFn: () => warehouseService.getWarehouses(),
+    ...CACHE_TIMES.LONG
   });
 
   const { data: slots = [], isLoading: slotsLoading } = useQuery({
     queryKey: ['admin-warehouse-slots', selectedInventory?.id],
-    queryFn: async () => {
-      const res = await api.get(`/admin/warehouse-slots?warehouse_id=${selectedInventory.id}`);
-      return res.data;
-    },
-    enabled: !!selectedInventory
+    queryFn: () => warehouseService.getWarehouseSlotsList(selectedInventory.id),
+    enabled: !!selectedInventory,
+    ...CACHE_TIMES.SHORT
   });
 
   // Update selected inventory reference when warehouses list updates
@@ -70,9 +67,9 @@ export default function WarehouseManagement() {
     if (hasErrors) return;
     setSaving(true);
     try {
-      await api.post('/admin/warehouses', { ...form, total_capacity_kg: parseFloat(form.total_capacity_kg) });
+      await warehouseService.createWarehouse({ ...form, total_capacity_kg: parseFloat(form.total_capacity_kg) });
       toast.success(t('warehouse_created'));
-      setShowModal(false); 
+      setShowModal(false);
       queryClient.invalidateQueries({ queryKey: ['admin-warehouses'] });
     } catch { toast.error(t('failed_to_create') || 'Failed to create'); }
     finally { setSaving(false); }
@@ -89,7 +86,7 @@ export default function WarehouseManagement() {
     }
     setSaving(true);
     try {
-      await api.post(`/admin/warehouses/${selectedInventory.id}/inventory`, {
+      await warehouseService.addInventory(selectedInventory.id, {
         grain_type: finalGrainType,
         quantity_kg: parseFloat(invForm.quantity_kg)
       });
@@ -97,7 +94,7 @@ export default function WarehouseManagement() {
       setShowInvModal(false);
       setInvForm({ grain_type: 'Rice', custom_type: '', quantity_kg: '' });
       queryClient.invalidateQueries({ queryKey: ['admin-warehouses'] });
-    } catch (err) { toast.error(err.response?.data?.error || 'Failed to add inventory'); }
+    } catch (err) { toast.error(err.message || 'Failed to add inventory'); }
     finally { setSaving(false); }
   };
 
@@ -107,7 +104,7 @@ export default function WarehouseManagement() {
     if (hasErrors) return;
     setSaving(true);
     try {
-      await api.post('/admin/warehouse-slots', {
+      await warehouseService.createSlot({
         warehouse_id: selectedInventory.id,
         ...slotForm,
         total_capacity_kg: parseFloat(slotForm.total_capacity_kg)
@@ -116,7 +113,7 @@ export default function WarehouseManagement() {
       setShowSlotModal(false);
       setSlotForm({ slot_date: '', start_time: '', end_time: '', total_capacity_kg: '' });
       queryClient.invalidateQueries({ queryKey: ['admin-warehouse-slots', selectedInventory.id] });
-    } catch (err) { toast.error(err.response?.data?.error || 'Failed to create slot'); }
+    } catch (err) { toast.error(err.message || 'Failed to create slot'); }
     finally { setSaving(false); }
   };
 
@@ -148,9 +145,9 @@ export default function WarehouseManagement() {
                       <div className={pct > 80 ? 'warehouse-fill-red' : pct > 60 ? 'warehouse-fill-yellow' : 'warehouse-fill-green'} style={{ width: `${pct}%` }} />
                     </div>
                     <div className="flex justify-between text-xs text-gray-500">
-                      <span>{t("used")}: {(w.current_load_kg / 1000).toFixed(0)}T</span>
+                      <span>{t("used")}: {(w.current_load_kg / 100).toFixed(0)} Qtl</span>
                       <span className="font-bold text-gray-800">{pct.toFixed(1)}% {t("full")}</span>
-                      <span>{t("total")}: {(w.total_capacity_kg / 1000).toFixed(0)}T</span>
+                      <span>{t("total")}: {(w.total_capacity_kg / 100).toFixed(0)} Qtl</span>
                     </div>
                   </div>
                 );
