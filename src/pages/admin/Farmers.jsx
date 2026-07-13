@@ -6,7 +6,7 @@ import managerService from '../../services/managerService';
 import { useAuth } from '../../context/AuthContext';
 import { Users, Search, Eye, Check, X, ChevronRight, User, Plus, UserPlus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import validators from '../../utils/validators';
+import validators, { sanitizeMobileInput } from '../../utils/validators';
 import FieldError from '../../components/shared/FieldError';
 
 export default function FarmersDirectory() {
@@ -38,13 +38,7 @@ export default function FarmersDirectory() {
     let error = null;
     switch (field) {
       case 'name': error = validators.name(value); break;
-      case 'phone':
-        if (!value) error = 'Phone Number is required.';
-        else if (!/^\d+$/.test(value)) error = 'Phone Number must contain only digits.';
-        else if (value.length !== 10) error = 'Phone Number must contain exactly 10 digits.';
-        else if (!/^[6-9]/.test(value)) error = 'Invalid mobile number';
-        else error = null;
-        break;
+      case 'phone': error = validators.phone(value); break;
       case 'email': error = validators.emailRequired(value); break;
       case 'password': error = validators.password(value); break;
       case 'address': error = value ? validators.address(value) : null; break;
@@ -59,6 +53,21 @@ export default function FarmersDirectory() {
   const updateForm = (field, value) => {
     setRegisterForm(f => ({ ...f, [field]: value }));
     if (fieldErrors[field]) validateField(field, value);
+  };
+
+  // Mobile number validates live (every keystroke/paste), not just on blur —
+  // sanitized so non-digits can never enter the field in the first place.
+  const handlePhoneChange = (e) => {
+    const clean = sanitizeMobileInput(e.target.value);
+    setRegisterForm(f => ({ ...f, phone: clean }));
+    validateField('phone', clean);
+  };
+
+  const handlePhonePaste = (e) => {
+    e.preventDefault();
+    const clean = sanitizeMobileInput(e.clipboardData.getData('text'));
+    setRegisterForm(f => ({ ...f, phone: clean }));
+    validateField('phone', clean);
   };
 
   const { data: farmers = [], isLoading: loading } = useQuery({
@@ -331,9 +340,23 @@ export default function FarmersDirectory() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="label">Phone (10 digits) *</label>
-                    <input value={registerForm.phone} onChange={e => updateForm('phone', e.target.value)} onBlur={() => validateField('phone', registerForm.phone)} className={`input-field ${fieldErrors.phone ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder="9876543210" maxLength={10} inputMode="numeric" required />
-                    <FieldError error={fieldErrors.phone} />
+                    <label className="label" htmlFor="reg-farmer-phone">Phone (10 digits) *</label>
+                    <input
+                      id="reg-farmer-phone"
+                      value={registerForm.phone}
+                      onChange={handlePhoneChange}
+                      onPaste={handlePhonePaste}
+                      onBlur={() => validateField('phone', registerForm.phone)}
+                      className={`input-field ${fieldErrors.phone ? 'border-red-400 ring-1 ring-red-200' : ''}`}
+                      placeholder="9876543210"
+                      maxLength={10}
+                      inputMode="numeric"
+                      autoComplete="tel"
+                      required
+                      aria-invalid={!!fieldErrors.phone}
+                      aria-describedby={fieldErrors.phone ? 'reg-farmer-phone-error' : undefined}
+                    />
+                    <FieldError error={fieldErrors.phone} id="reg-farmer-phone-error" />
                   </div>
                   <div>
                     <label className="label">Email Address *</label>

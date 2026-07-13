@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Users, Package, Warehouse, BarChart2,
   Calendar, MapPin, TrendingUp, Wheat, LogOut, Menu, X,
-  Globe, Shield, Leaf, User, FileText, DollarSign, ShoppingBag
+  Globe, Shield, Leaf, User, FileText, DollarSign, ShoppingBag, Database
 } from 'lucide-react';
 import NotificationCenter from '../components/shared/NotificationCenter';
 import LiveMarketRatesWidget from '../components/shared/LiveMarketRatesWidget';
@@ -28,8 +28,8 @@ export default function AdminLayout() {
   const [showLang, setShowLang] = useState(false);
 
   const location = useLocation();
-  const basePath = location.pathname.startsWith('/admin/dashboard/operational')
-    ? '/admin/dashboard/operational'
+  const basePath = location.pathname.startsWith('/admin/dashboard/op')
+    ? '/admin/dashboard/op'
     : '/manager/dashboard';
 
   const navItems = [
@@ -43,8 +43,9 @@ export default function AdminLayout() {
     { to: `${basePath}/reports`, icon: <BarChart2 size={18} />, label: t('reports'), roles: ['manager', 'super_admin'] },
     { to: `${basePath}/market-rates`, icon: <TrendingUp size={18} />, label: t('market_rates'), roles: ['manager', 'super_admin'] },
     { to: `${basePath}/grain-sales`, icon: <Wheat size={18} />, label: t('grain_sales'), roles: ['super_admin'] },
-    { to: `${basePath}/credits`, icon: <DollarSign size={18} />, label: t('credits') || 'Credits', roles: ['manager', 'super_admin'] },
+    { to: `${basePath}/credits`, icon: <DollarSign size={18} />, label: t('credits') || 'Credits', roles: ['super_admin'] },
     { to: `${basePath}/event-logs`, icon: <FileText size={18} />, label: t('event_logs'), roles: ['super_admin'] },
+    { to: `${basePath}/cache`, icon: <Database size={18} />, label: 'Cache Management', roles: ['super_admin'] },
     { to: `${basePath}/profile`, icon: <User size={18} />, label: t('profile_settings'), roles: ['manager', 'super_admin'] },
     { to: `/admin/dashboard`, icon: <Shield size={18} />, label: t('super_admin_portal'), roles: ['super_admin'] },
   ];
@@ -110,7 +111,7 @@ export default function AdminLayout() {
             ))}
           </nav>
           <div className="p-3 border-t border-white/10">
-            <button onClick={() => { logout(); navigate('/'); }}
+            <button onClick={() => { navigate('/'); logout(); }}
               className="sidebar-link w-full text-red-300 hover:text-red-200 hover:bg-red-500/20">
               <LogOut size={18} /><span>{t('logout')}</span>
             </button>
@@ -165,7 +166,7 @@ export default function AdminLayout() {
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex overflow-x-auto z-40 h-16 shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.05)] safe-area-pb hide-scrollbar">
-        {visibleNavItems.filter(item => ['/visits', '/grain-sales', '/booking-slots', '/seed-purchases', '/seeds', '/farmers'].some(p => item.to.endsWith(p))).map(item => (
+        {visibleNavItems.filter(item => ['/visits', '/grain-sales', '/booking-slots', '/seed-purchases', '/seeds'].some(p => item.to.endsWith(p))).map(item => (
           <NavLink key={item.to} to={item.to} end={item.end}
             className={({ isActive }) => `flex-shrink-0 flex flex-col items-center justify-center w-[72px] h-full gap-1 transition-all ${isActive ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'}`}>
             {({ isActive }) => (

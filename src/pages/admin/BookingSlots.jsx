@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import api from '../../services/api/axios';
+import managerService from '../../services/managerService';
+import warehouseService from '../../services/warehouseService';
+import { useAuth } from '../../context/AuthContext';
 import {
   Calendar, Search, CheckCircle, X, MapPin, Eye,
   DollarSign, ClipboardList, Truck, AlertTriangle,
@@ -39,6 +41,7 @@ function StatusBadge({ status }) {
 
 export default function BookingSlots() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const [search, setSearch]               = useState('');
@@ -57,7 +60,7 @@ export default function BookingSlots() {
 
   const { data: slots = [], isLoading: loading } = useQuery({
     queryKey: ['admin-booking-slots'],
-    queryFn: async () => { const res = await api.get('/admin/booking-slots'); return res.data; },
+    queryFn: () => managerService.getBookingSlots(),
   });
 
   const [assignSlotModal, setAssignSlotModal] = useState(null);
@@ -65,21 +68,18 @@ export default function BookingSlots() {
 
   const { data: availableSlots = [], isLoading: slotsLoadingStatus } = useQuery({
     queryKey: ['admin-warehouse-slots', assignSlotModal?.warehouse_id, assignSlotModal?.booking_date],
-    queryFn: async () => {
-      const res = await api.get(`/admin/warehouse-slots?warehouse_id=${assignSlotModal.warehouse_id}&date=${assignSlotModal.booking_date}`);
-      return res.data;
-    },
+    queryFn: () => warehouseService.getWarehouseSlots(assignSlotModal.warehouse_id, assignSlotModal.booking_date),
     enabled: !!assignSlotModal
   });
 
   const handleAction = async (id, status, warehouse_slot_id = null) => {
     setActionLoading(id + status);
     try {
-      await api.patch(`/admin/booking-slots/${id}`, { status, warehouse_slot_id });
+      await managerService.updateBookingStatus(id, status, warehouse_slot_id, user?.name, user?.id);
       toast.success(t('slot_marked_as', { status: t(STATUS_META[status]?.key || status) }));
       queryClient.invalidateQueries({ queryKey: ['admin-booking-slots'] });
       if (status === 'confirmed') setAssignSlotModal(null);
-    } catch (err) { toast.error(err.response?.data?.error || t('action_failed')); }
+    } catch (err) { toast.error(err.message || t('action_failed')); }
     finally { setActionLoading(null); }
   };
 
@@ -87,12 +87,11 @@ export default function BookingSlots() {
     if (!saleId) return toast.error(t('no_grain_sale_linked'));
     setActionLoading('pay' + saleId);
     try {
-      await api.patch(`/admin/grain-sales/${saleId}/pay`);
+      await managerService.payGrainSale(saleId, undefined, user?.id);
       toast.success(t('farmer_paid_successfully'));
       queryClient.invalidateQueries({ queryKey: ['admin-booking-slots'] });
     } catch (err) {
-      if (err.response?.status === 404) toast.error(t('payment_already_processed'));
-      else toast.error(err.response?.data?.error || t('action_failed'));
+      toast.error(err.message || t('action_failed'));
     } finally { setActionLoading(null); }
   };
 
@@ -118,16 +117,19 @@ export default function BookingSlots() {
     if (bad > 0 && !inspectForm.rejection_reason) return toast.error(t('select_rejection_reason'));
     setInspectSaving(true);
     try {
-      await api.post(`/admin/booking-slots/${inspectSlot.id}/inspect`, {
-        good_quantity_kg: good,
-        bad_quantity_kg: bad,
-        rejection_reason: bad > 0 ? inspectForm.rejection_reason : null,
-        notes: inspectForm.notes || null,
-      });
+      await managerService.inspectCrop(
+        inspectSlot.id,
+        good,
+        bad,
+        bad > 0 ? inspectForm.rejection_reason : null,
+        inspectForm.notes || null,
+        user?.id,
+        user?.name
+      );
       toast.success(t('inspection_saved'));
       setInspectSlot(null);
       queryClient.invalidateQueries({ queryKey: ['admin-booking-slots'] });
-    } catch (err) { toast.error(err.response?.data?.error || t('inspection_failed')); }
+    } catch (err) { toast.error(err.message || t('inspection_failed')); }
     finally { setInspectSaving(false); }
   };
 
@@ -141,20 +143,20 @@ export default function BookingSlots() {
 
   const handleEditYieldSubmit = async (e) => {
     e.preventDefault();
-    const good = parseFloat(editYieldForm.good_quantity_kg);
-    const bad = parseFloat(editYieldForm.bad_quantity_kg);
+    const good  = parseFloat(editYieldForm.good_quantity_kg);
+    const bad   = parseFloat(editYieldForm.bad_quantity_kg);
+    const total = parseFloat(editYieldSlot.quantity_kg);
     if (isNaN(good) || isNaN(bad) || good < 0 || bad < 0) return toast.error(t('enter_valid_non_negative'));
-    
+    const sum = parseFloat((good + bad).toFixed(4));
+    if (Math.abs(sum - total) > 0.01) return toast.error(`Good + Bad (${sum} kg) must equal total (${total} kg)`);
+
     setEditSaving(true);
     try {
-      await api.put(`/admin/booking-slots/${editYieldSlot.id}/edit-yield`, {
-        good_quantity_kg: good,
-        bad_quantity_kg: bad,
-      });
+      await managerService.editYield(editYieldSlot.id, good, bad, user?.name, user?.id);
       toast.success(t('yield_updated_success'));
       setEditYieldSlot(null);
       queryClient.invalidateQueries({ queryKey: ['admin-booking-slots'] });
-    } catch (err) { toast.error(err.response?.data?.error || t('failed_to_update_yield')); }
+    } catch (err) { toast.error(err.message || t('failed_to_update_yield')); }
     finally { setEditSaving(false); }
   };
 
@@ -204,9 +206,60 @@ export default function BookingSlots() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Cards + Table */}
       <div className="glass-card overflow-hidden">
-        <div className="table-container">
+        {/* Mobile cards */}
+        <div className="sm:hidden divide-y divide-gray-100">
+          {loading
+            ? <div className="flex justify-center py-10"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>
+            : filtered.length === 0
+              ? <p className="text-center py-10 text-gray-400 text-sm">{t('no_booking_slots_found', 'No booking slots found')}</p>
+              : filtered.map((s) => (
+                <div key={s.id} className="p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-gray-800">{s.farmer_name}</p>
+                      <p className="text-xs text-gray-500">{s.phone}</p>
+                    </div>
+                    <StatusBadge status={s.status} />
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
+                    <span><span className="font-medium">Date:</span> {s.booking_date}</span>
+                    <span><span className="font-medium">Grain:</span> {s.grain_type}</span>
+                    <span className="text-green-600 font-semibold">{s.quantity_kg} kg</span>
+                  </div>
+                  {(s.good_quantity_kg !== null && s.good_quantity_kg !== undefined) && (
+                    <div className="flex gap-2 text-[10px] font-semibold">
+                      <span className="text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">{t('good_qty_kg', { qty: s.good_quantity_kg })}</span>
+                      {s.bad_quantity_kg > 0 && <span className="text-red-500 bg-red-50 px-1.5 py-0.5 rounded">{t('waste_qty_kg', { qty: s.bad_quantity_kg })}</span>}
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-500"><span className="font-medium">Warehouse:</span> {s.warehouse_name}</p>
+                  <div className="flex gap-1 flex-wrap pt-1">
+                    <button onClick={() => setSelectedSlot(s)} className="p-1.5 rounded-lg bg-gray-100 text-gray-500 hover:text-primary-600 hover:bg-primary-50" title={t('view_details')}><Eye size={14} /></button>
+                    {(s.status === 'completed' || s.status === 'Inspection Completed') && (
+                      <button onClick={() => openEditYield(s)} className="p-1.5 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200" title={t('edit_good_waste_yield')}><Edit2 size={14} /></button>
+                    )}
+                    {s.status === 'pending' && (<>
+                      <button onClick={() => { setAssignSlotModal(s); setSelectedWarehouseSlotId(''); }} disabled={actionLoading === s.id + 'confirmed'} className="p-1.5 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 disabled:opacity-50" title={t('confirm_and_assign_slot')}><CheckCircle size={14} /></button>
+                      <button onClick={() => handleAction(s.id, 'cancelled')} disabled={actionLoading === s.id + 'cancelled'} className="p-1.5 rounded-lg bg-red-100 text-red-500 hover:bg-red-200 disabled:opacity-50" title="Cancel"><X size={14} /></button>
+                    </>)}
+                    {s.status === 'confirmed' && (
+                      <button onClick={() => handleAction(s.id, 'delivered')} disabled={actionLoading === s.id + 'delivered'} className="btn-sm bg-orange-500 hover:bg-orange-600 text-white flex items-center gap-1 disabled:opacity-50"><Truck size={13} /> {t('delivered')}</button>
+                    )}
+                    {s.status === 'delivered' && (
+                      <button onClick={() => openInspect(s)} className="btn-sm bg-violet-600 hover:bg-violet-700 text-white flex items-center gap-1"><FlaskConical size={13} /> {t('inspect')}</button>
+                    )}
+                    {s.status === 'Inspection Completed' && s.grain_sale_id && (
+                      <button onClick={() => handlePayFarmer(s.grain_sale_id)} disabled={actionLoading === 'pay' + s.grain_sale_id} className="btn-sm bg-green-600 hover:bg-green-700 text-white flex items-center gap-1 disabled:opacity-50"><DollarSign size={13} /> {t('pay')}</button>
+                    )}
+                  </div>
+                </div>
+              ))
+          }
+        </div>
+        {/* Desktop table */}
+        <div className="hidden sm:block table-container">
           <table className="data-table">
             <thead><tr>
               <th>{t('date')}</th><th>{t('farmer')}</th><th>{t('grain_qty')}</th>
@@ -302,8 +355,8 @@ export default function BookingSlots() {
 
       {/* ─── Slot Details Modal ─── */}
       {selectedSlot && (
-        <div className="modal-overlay" onClick={() => setSelectedSlot(null)}>
-          <div className="modal-content max-w-lg" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay items-start pt-4 sm:items-center sm:pt-0" onClick={() => setSelectedSlot(null)}>
+          <div className="modal-content max-w-lg w-full mx-3 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3 className="font-bold text-gray-800 text-lg">{t('booking_details')}</h3>
               <button onClick={() => setSelectedSlot(null)} className="btn-icon"><X size={18} /></button>
@@ -365,8 +418,8 @@ export default function BookingSlots() {
 
       {/* ─── Inspect Crop Modal ─── */}
       {inspectSlot && (
-        <div className="modal-overlay" onClick={() => !inspectSaving && setInspectSlot(null)}>
-          <div className="modal-content max-w-md" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay items-start pt-4 sm:items-center sm:pt-0" onClick={() => !inspectSaving && setInspectSlot(null)}>
+          <div className="modal-content max-w-md w-full mx-3 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center">
@@ -464,8 +517,8 @@ export default function BookingSlots() {
 
       {/* ─── Edit Yield Modal ─── */}
       {editYieldSlot && (
-        <div className="modal-overlay" onClick={() => !editSaving && setEditYieldSlot(null)}>
-          <div className="modal-content max-w-sm" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay items-start pt-4 sm:items-center sm:pt-0" onClick={() => !editSaving && setEditYieldSlot(null)}>
+          <div className="modal-content max-w-sm w-full mx-3 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -480,14 +533,44 @@ export default function BookingSlots() {
             </div>
 
             <form onSubmit={handleEditYieldSubmit} className="modal-body space-y-4">
+              {/* Live balance bar */}
+              {(() => {
+                const g   = parseFloat(editYieldForm.good_quantity_kg) || 0;
+                const b   = parseFloat(editYieldForm.bad_quantity_kg)  || 0;
+                const tot = parseFloat(editYieldSlot.quantity_kg) || 0;
+                const sum = parseFloat((g + b).toFixed(4));
+                const ok  = Math.abs(sum - tot) <= 0.01;
+                return (
+                  <div className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
+                    ok ? 'bg-green-50 border-green-200 text-green-700' : 'bg-amber-50 border-amber-200 text-amber-700'
+                  }`}>
+                    <span>Total: <strong>{tot} kg</strong></span>
+                    <span>Entered: <strong>{sum} kg</strong>
+                      {!ok && sum > 0 && (
+                        <span className="ml-2 text-xs text-red-500">({sum > tot ? '+' : ''}{(sum - tot).toFixed(2)} kg)</span>
+                      )}
+                    </span>
+                  </div>
+                );
+              })()}
+
               <div>
                 <label className="label flex items-center gap-1.5">
                   <ThumbsUp size={14} className="text-green-600" /> {t('good_seed_kg')} *
                 </label>
                 <input type="number"
                   value={editYieldForm.good_quantity_kg}
-                  onChange={(e) => setEditYieldForm((f) => ({ ...f, good_quantity_kg: e.target.value }))}
-                  className="input-field" min="0.01" step="0.01" required />
+                  onChange={(e) => {
+                    const g   = parseFloat(e.target.value) || 0;
+                    const tot = parseFloat(editYieldSlot.quantity_kg) || 0;
+                    setEditYieldForm(f => ({ ...f, good_quantity_kg: e.target.value, bad_quantity_kg: String(Math.max(0, parseFloat((tot - g).toFixed(4)))) }));
+                  }}
+                  className="input-field" min="0" max={editYieldSlot.quantity_kg} step="0.01" required />
+                {(() => {
+                  const g = parseFloat(editYieldForm.good_quantity_kg) || 0;
+                  const tot = parseFloat(editYieldSlot.quantity_kg) || 0;
+                  return g > tot ? <p className="text-xs text-red-500 mt-1">Cannot exceed total ({tot} kg)</p> : null;
+                })()}
               </div>
 
               <div>
@@ -496,14 +579,28 @@ export default function BookingSlots() {
                 </label>
                 <input type="number"
                   value={editYieldForm.bad_quantity_kg}
-                  onChange={(e) => setEditYieldForm((f) => ({ ...f, bad_quantity_kg: e.target.value }))}
-                  className="input-field" min="0.01" step="0.01" required />
+                  onChange={(e) => {
+                    const b   = parseFloat(e.target.value) || 0;
+                    const tot = parseFloat(editYieldSlot.quantity_kg) || 0;
+                    setEditYieldForm(f => ({ ...f, bad_quantity_kg: e.target.value, good_quantity_kg: String(Math.max(0, parseFloat((tot - b).toFixed(4)))) }));
+                  }}
+                  className="input-field" min="0" max={editYieldSlot.quantity_kg} step="0.01" required />
+                {(() => {
+                  const b = parseFloat(editYieldForm.bad_quantity_kg) || 0;
+                  const tot = parseFloat(editYieldSlot.quantity_kg) || 0;
+                  return b > tot ? <p className="text-xs text-red-500 mt-1">Cannot exceed total ({tot} kg)</p> : null;
+                })()}
               </div>
             </form>
 
             <div className="modal-footer">
               <button type="button" onClick={() => setEditYieldSlot(null)} className="btn-ghost" disabled={editSaving}>{t('cancel')}</button>
-              <button onClick={handleEditYieldSubmit} disabled={editSaving}
+              <button onClick={handleEditYieldSubmit} disabled={editSaving || (() => {
+                const g = parseFloat(editYieldForm.good_quantity_kg) || 0;
+                const b = parseFloat(editYieldForm.bad_quantity_kg)  || 0;
+                const tot = parseFloat(editYieldSlot?.quantity_kg) || 0;
+                return Math.abs(parseFloat((g + b).toFixed(4)) - tot) > 0.01;
+              })()}
                 className="btn-primary flex items-center gap-2 disabled:opacity-50">
                 {editSaving
                   ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -517,7 +614,7 @@ export default function BookingSlots() {
 
       {/* ─── Assign Slot Modal ─── */}
       {assignSlotModal && (
-        <div className="modal-overlay" onClick={() => setAssignSlotModal(null)}>
+        <div className="modal-overlay items-start pt-4 sm:items-center sm:pt-0" onClick={() => setAssignSlotModal(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div className="flex items-center gap-3">

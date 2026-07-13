@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import api from '../../services/api/axios';
+import authService from '../../services/authService';
 import toast from 'react-hot-toast';
 import {
   User, Lock, Eye, EyeOff, Shield, Phone, Mail,
@@ -39,21 +39,18 @@ export default function ManagerProfile() {
 
     setEditLoading(true);
     try {
-      const { data } = await api.patch('/auth/update-profile', {
-        name:  editName.trim(),
-        email: editEmail.trim() || null,
-      });
+      await authService.updateProfile(user?.id, editName.trim(), editEmail.trim() || null);
 
       // Reflect changes in the auth context so the header / avatar updates
-      const updatedUser = { ...user, name: data.user.name, email: data.user.email };
+      const updatedUser = { ...user, name: editName.trim(), email: editEmail.trim() || user?.email };
       setUser(updatedUser);
       sessionStorage.setItem('agro_user', JSON.stringify(updatedUser));
 
       setEditMode(false);
       setEditSuccess(true);
-      toast.success('Profile updated! Admin has been notified.');
+      toast.success('Profile updated successfully!');
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to update profile');
+      toast.error(err.message || 'Failed to update profile');
     } finally {
       setEditLoading(false);
     }
@@ -101,18 +98,14 @@ export default function ManagerProfile() {
 
     setLoading(true);
     try {
-      await api.post('/auth/change-password', {
-        phone:        user.phone,
-        old_password: oldPwd,
-        new_password: newPwd,
-      });
+      await authService.changePassword(user.phone, oldPwd, newPwd);
       setSuccess(true);
       setOldPwd('');
       setNewPwd('');
       setConfirmPwd('');
       toast.success('Password changed successfully!');
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to change password');
+      toast.error(err.message || 'Failed to change password');
     } finally {
       setLoading(false);
     }

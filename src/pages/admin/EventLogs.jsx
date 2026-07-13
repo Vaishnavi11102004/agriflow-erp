@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import api from '../../services/api/axios';
+import adminService from '../../services/adminService';
 import { FileText, Search, Download, Filter } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -13,8 +13,8 @@ export default function EventLogs() {
     queryKey: ['admin-event-logs'],
     queryFn: async () => {
       try {
-        const res = await api.get('/admin/audit-logs');
-        return (res.data || []).map(log => ({
+        const data = await adminService.getAuditLogs();
+        return (data || []).map(log => ({
           id: log.id,
           action: log.action,
           entity: log.entity_type ? `${log.entity_type}#${log.entity_id}` : '-',
@@ -128,7 +128,27 @@ export default function EventLogs() {
       </div>
 
       <div className="glass-card overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile cards */}
+        <div className="sm:hidden divide-y divide-gray-100">
+          {loading
+            ? <div className="flex justify-center py-10"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>
+            : filtered.length === 0
+              ? <p className="text-center py-10 text-gray-400 text-sm">{t('no_logs_found') || 'No event logs found'}</p>
+              : filtered.map(l => (
+                <div key={l.id} className="p-4 space-y-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-semibold text-gray-800 text-sm">{l.action}</p>
+                    <span className="text-xs text-gray-400 whitespace-nowrap">{new Date(l.timestamp * 1000).toLocaleDateString('en-IN')}</span>
+                  </div>
+                  <p className="text-xs text-primary-600 font-medium">{l.manager} <span className="text-gray-400">· {l.role}</span></p>
+                  <p className="text-xs text-gray-500 font-medium">{l.entity}</p>
+                  <p className="text-xs text-gray-500 line-clamp-2">{l.details}</p>
+                </div>
+              ))
+          }
+        </div>
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50">

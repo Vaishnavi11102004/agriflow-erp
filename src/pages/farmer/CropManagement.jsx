@@ -2,11 +2,17 @@ import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import api from '../../services/api/axios';
-import { Sprout, Plus, X, CheckCircle, Clock, Leaf, Calendar, Tractor } from 'lucide-react';
+import farmerService from '../../services/farmerService';
+import { useAuth } from '../../context/AuthContext';
+import { Sprout, Plus, X, CheckCircle, Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const CROP_TYPES = ['Rice', 'Wheat', 'Maize', 'Cotton', 'Groundnut', 'Sugarcane', 'Turmeric', 'Chili', 'Other'];
+
+const CROP_VISIT_MONTHS = {
+  Rice: [1, 3], Wheat: [1, 3], Maize: [1, 2], Cotton: [1, 4],
+  Groundnut: [1, 3], Sugarcane: [2, 5], Turmeric: [2, 6], Chili: [1, 3], Other: [1, 3],
+};
 
 function CropCycleTracker({ sowingDate }) {
   const { t } = useTranslation();
@@ -41,19 +47,23 @@ function CropCycleTracker({ sowingDate }) {
 
 export default function CropManagement() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
+  const defaultForm = { crop_type: 'Rice', custom_crop_type: '', acres: '', sowing_date: new Date().toISOString().split('T')[0] };
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ crop_type: 'Rice', acres: '', sowing_date: new Date().toISOString().split('T')[0] });
+  const [form, setForm] = useState(defaultForm);
   const [saving, setSaving] = useState(false);
 
   const { data: crops = [], isLoading: cropsLoading } = useQuery({
-    queryKey: ['farmer-crops'],
-    queryFn: async () => { const res = await api.get('/farmer/crops'); return res.data; }
+    queryKey: ['farmer-crops', user?.id],
+    queryFn: () => farmerService.getCrops(user.id),
+    enabled: !!user?.id
   });
 
   const { data: visits = [], isLoading: visitsLoading } = useQuery({
-    queryKey: ['farmer-visits'],
-    queryFn: async () => { const res = await api.get('/farmer/visits'); return res.data; }
+    queryKey: ['farmer-visits', user?.id],
+    queryFn: () => farmerService.getVisits(user.id),
+    enabled: !!user?.id
   });
 
   const loading = cropsLoading || visitsLoading;
@@ -61,13 +71,16 @@ export default function CropManagement() {
   const addCrop = async (e) => {
     e.preventDefault();
     if (!form.acres || parseFloat(form.acres) <= 0) return toast.error(t('enter_valid_acreage'));
+    const cropType = form.crop_type === 'Other' ? form.custom_crop_type.trim() : form.crop_type;
+    if (!cropType) return toast.error('Please enter a crop type');
     setSaving(true);
     try {
-      await api.post('/farmer/crops', { ...form, acres: parseFloat(form.acres) });
+      await farmerService.registerCrop(user.id, { crop_type: cropType, acres: parseFloat(form.acres), sowing_date: form.sowing_date });
       toast.success(t('crop_registered_success'));
       setShowModal(false);
+      setForm(defaultForm);
       queryClient.invalidateQueries({ queryKey: ['farmer-crops'] });
-    } catch (err) { toast.error(err.response?.data?.error || t('failed_to_register_crop')); }
+    } catch (err) { toast.error(err.message || t('failed_to_register_crop')); }
     finally { setSaving(false); }
   };
 
@@ -92,7 +105,7 @@ export default function CropManagement() {
           <div className="text-6xl mb-4">🌱</div>
           <h3 className="text-lg font-semibold text-gray-700">{t('no_crops_yet')}</h3>
           <p className="text-gray-400 text-sm mt-2 mb-6">{t('register_first_crop')}</p>
-          <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2 mx-auto">{t('register_crop')}</button>
+          <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2 mx-auto">{t('add_crop')}</button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -119,7 +132,6 @@ export default function CropManagement() {
 
                 <CropCycleTracker sowingDate={crop.sowing_date} />
 
-                {/* Visits */}
                 {cropVisits.length > 0 && (
                   <div className="mt-4 pt-3 border-t border-gray-100">
                     <p className="text-xs font-semibold text-gray-600 mb-2">{t('farm_visits')}</p>
@@ -143,24 +155,30 @@ export default function CropManagement() {
         </div>
       )}
 
-      {/* Add Crop Modal */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay items-start pt-4 sm:items-center sm:pt-0" onClick={() => setShowModal(false)}>
+          <div className="modal-content w-full mx-3 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center"><Sprout size={20} className="text-primary-600" /></div>
-                <div><h3 className="font-bold text-gray-800">{t('register_crop')}</h3><p className="text-xs text-gray-500">{t('fill_crop_details')}</p></div>
+                <div><h3 className="font-bold text-gray-800">{t('add_crop')}</h3><p className="text-xs text-gray-500">{t('fill_crop_details')}</p></div>
               </div>
               <button onClick={() => setShowModal(false)} className="btn-icon"><X size={18} /></button>
             </div>
-            <form onSubmit={addCrop} className="modal-body space-y-4">
+            <form id="add-crop-form" onSubmit={addCrop} className="modal-body space-y-4">
               <div>
                 <label className="label">{t('crop_type')} *</label>
-                <select value={form.crop_type} onChange={e => setForm(f => ({ ...f, crop_type: e.target.value }))} className="input-field">
+                <select value={form.crop_type} onChange={e => setForm(f => ({ ...f, crop_type: e.target.value, custom_crop_type: '' }))} className="input-field">
                   {CROP_TYPES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
+              {form.crop_type === 'Other' && (
+                <div>
+                  <label className="label">Specify Crop Type *</label>
+                  <input value={form.custom_crop_type} onChange={e => setForm(f => ({ ...f, custom_crop_type: e.target.value }))}
+                    className="input-field" placeholder="e.g. Sunflower" required />
+                </div>
+              )}
               <div>
                 <label className="label">{t('acres')} *</label>
                 <input type="number" value={form.acres} onChange={e => setForm(f => ({ ...f, acres: e.target.value }))}
@@ -172,14 +190,14 @@ export default function CropManagement() {
                   className="input-field" required />
               </div>
               <div className="alert-info text-xs">
-                {t('farm_visits_auto_scheduled')}
+                {t('farm_visits_auto_scheduled')} Visits scheduled at months {(CROP_VISIT_MONTHS[form.crop_type] || CROP_VISIT_MONTHS.Other).join(' and ')}.
               </div>
             </form>
             <div className="modal-footer">
-              <button onClick={() => setShowModal(false)} className="btn-ghost">{t('cancel')}</button>
-              <button onClick={addCrop} disabled={saving} className="btn-primary flex items-center gap-2">
+              <button type="button" onClick={() => setShowModal(false)} className="btn-ghost">{t('cancel')}</button>
+              <button type="submit" form="add-crop-form" disabled={saving} className="btn-primary flex items-center gap-2">
                 {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle size={16} />}
-                {saving ? t('registering') : t('register_crop')}
+                {saving ? t('registering') : t('add_crop')}
               </button>
             </div>
           </div>

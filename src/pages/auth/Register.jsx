@@ -1,32 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import api from '../../services/api/axios';
-import { Leaf, Phone, Lock, User, MapPin, Sprout, CheckCircle, Eye, EyeOff, ArrowRight, ArrowLeft } from 'lucide-react';
+import authService from '../../services/authService';
+import { Leaf, User, Sprout, CheckCircle, Eye, EyeOff, ArrowRight, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
-import validators from '../../utils/validators';
+import validators, { sanitizeMobileInput } from '../../utils/validators';
 import FieldError from '../../components/shared/FieldError';
 
 
 export default function Register() {
   const { t } = useTranslation();
-  const STEPS = [t('personal_info'), t('verify_otp_step'), t('farm_details')];
+  const STEPS = [t('personal_info'), t('farm_details')];
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [timer, setTimer] = useState(0);
   const [showPwd, setShowPwd] = useState(false);
-
-  useEffect(() => {
-    let interval;
-    if (timer > 0 && step === 1) {
-      interval = setInterval(() => {
-        setTimer((prev) => prev - 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [timer, step]);
   const [form, setForm] = useState({
     name: '', phone: '', email: '', password: '', confirmPwd: '',
     otp: '', address: '', acres_of_land: '', crop_address: ''
@@ -54,7 +42,7 @@ export default function Register() {
     switch (field) {
       case 'name': error = validators.name(value); break;
       case 'phone': error = validators.phone(value); break;
-      case 'email': error = validators.email(value); break;
+      case 'email': error = validators.emailRequired(value); break;
       case 'password': error = validators.password(value); break;
       case 'confirmPwd': error = validators.confirmPassword(value, form); break;
       case 'address': error = validators.address(value); break;
@@ -66,32 +54,28 @@ export default function Register() {
     setFieldErrors(prev => ({ ...prev, [field]: error }));
   };
 
-  const sendOTP = async () => {
-    if (form.password !== form.confirmPwd) return toast.error(t('passwords_do_not_match'));
-    if (!/^\d{10}$/.test(form.phone)) return toast.error(t('enter_valid_phone'));
-    setLoading(true);
-    try {
-      const { data } = await api.post('/auth/send-otp', { phone: form.phone });
-      setOtpSent(true);
-      toast.success(`OTP sent! (Demo OTP: ${data.otp})`);
-      setStep(1);
-      setTimer(60);
-    } catch (err) { toast.error(err.response?.data?.error || 'Failed to send OTP'); }
-    finally { setLoading(false); }
+  // Mobile number gets its own handler: sanitize on every keystroke/paste so
+  // invalid characters never land in the field, and validate immediately
+  // (not on blur) so the error clears the instant the value becomes valid.
+  const handlePhoneChange = (e) => {
+    const clean = sanitizeMobileInput(e.target.value);
+    setForm(f => ({ ...f, phone: clean }));
+    validateField('phone', clean);
   };
 
-  const verifyOtp = async () => {
-    if (!form.otp || form.otp.length !== 6) return toast.error(t('enter_6_digit_otp'));
-    setLoading(true);
-    try {
-      await api.post('/auth/verify-otp', { phone: form.phone, otp: form.otp });
-      toast.success('OTP Verified!');
-      setStep(2);
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Invalid OTP');
-    } finally {
-      setLoading(false);
+  const handlePhonePaste = (e) => {
+    e.preventDefault();
+    const clean = sanitizeMobileInput(e.clipboardData.getData('text'));
+    setForm(f => ({ ...f, phone: clean }));
+    validateField('phone', clean);
+  };
+
+  const handleNextStep = (e) => {
+    e.preventDefault();
+    if (!form.name || !form.phone || !form.email || !form.password || form.password !== form.confirmPwd) {
+      return toast.error('Please fill all required personal fields');
     }
+    setStep(1);
   };
 
   const handleRegister = async () => {
@@ -99,24 +83,20 @@ export default function Register() {
     if (form.password !== form.confirmPwd) return toast.error(t('passwords_do_not_match'));
     setLoading(true);
     try {
-      await api.post('/auth/register', {
-        name: form.name, phone: form.phone, email: form.email,
-        password: form.password, otp: form.otp,
-        address: form.address, acres_of_land: parseFloat(form.acres_of_land),
+      await authService.registerWithEmail({
+        name: form.name,
+        phone: form.phone,
+        email: form.email,
+        password: form.password,
+        address: form.address,
+        acres_of_land: parseFloat(form.acres_of_land),
         crop_address: form.crop_address
       });
       toast.success('Registration submitted! Admin will approve your account.');
       navigate('/login');
-        } catch (err) {
-      if (err.response?.data?.details && Array.isArray(err.response.data.details)) {
-        const fieldErrors = err.response.data.details.map(d => `${d.field}: ${d.message}`).join(', ');
-        toast.error(`Validation failed: ${fieldErrors}`);
-      } else {
-        toast.error(err.response?.data?.error || 'Registration failed');
-      }
-    }
-
-    finally { setLoading(false); }
+    } catch (err) {
+      toast.error(err.message || 'Registration failed');
+    } finally { setLoading(false); }
   };
 
   const strengthColor = ['bg-gray-200', 'bg-red-400', 'bg-orange-400', 'bg-yellow-400', 'bg-green-500'];
@@ -200,13 +180,27 @@ export default function Register() {
                   <FieldError error={fieldErrors.name} />
                 </div>
                 <div className="col-span-2">
-                  <label className="label">{t('mobile_number')} *</label>
-                  <input type="tel" value={form.phone} onChange={e => update('phone', e.target.value)} onBlur={() => validateField('phone', form.phone)} className={`input-field ${fieldErrors.phone ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder={t('mobile_placeholder')} maxLength={10} />
-                  <FieldError error={fieldErrors.phone} />
+                  <label className="label" htmlFor="reg-phone">{t('mobile_number')} *</label>
+                  <input
+                    id="reg-phone"
+                    type="tel"
+                    inputMode="numeric"
+                    autoComplete="tel"
+                    value={form.phone}
+                    onChange={handlePhoneChange}
+                    onPaste={handlePhonePaste}
+                    onBlur={() => validateField('phone', form.phone)}
+                    className={`input-field ${fieldErrors.phone ? 'border-red-400 ring-1 ring-red-200' : ''}`}
+                    placeholder={t('mobile_placeholder')}
+                    maxLength={10}
+                    aria-invalid={!!fieldErrors.phone}
+                    aria-describedby={fieldErrors.phone ? 'reg-phone-error' : undefined}
+                  />
+                  <FieldError error={fieldErrors.phone} id="reg-phone-error" />
                 </div>
                 <div className="col-span-2">
-                  <label className="label">{t('email_optional')}</label>
-                  <input type="email" value={form.email} onChange={e => update('email', e.target.value)} onBlur={() => validateField('email', form.email)} className={`input-field ${fieldErrors.email ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder={t('your_email')} />
+                  <label className="label">Email Address *</label>
+                  <input type="email" value={form.email} onChange={e => update('email', e.target.value)} onBlur={() => validateField('email', form.email)} className={`input-field ${fieldErrors.email ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder="Enter email address" />
                   <FieldError error={fieldErrors.email} />
                 </div>
                 <div>
@@ -229,45 +223,16 @@ export default function Register() {
                   <FieldError error={fieldErrors.confirmPwd} />
                 </div>
               </div>
-              <button onClick={sendOTP} disabled={loading || !form.name || !form.phone || !form.password || form.password !== form.confirmPwd}
+              <button onClick={handleNextStep} disabled={loading || !form.name || !form.phone || !form.email || !form.password || form.password !== form.confirmPwd}
                 className="btn-primary w-full py-3 flex items-center justify-center gap-2 mt-2">
                 {loading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
-                {t('send_otp')} <ArrowRight size={16} />
+                Next: Farm Details <ArrowRight size={16} />
               </button>
             </div>
           )}
 
-          {/* Step 1: OTP */}
+          {/* Step 1: Farm Details */}
           {step === 1 && (
-            <div className="space-y-5 animate-fade-in">
-              <h2 className="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2"><Phone size={18} className="text-primary-600" />{t('verify_otp')}</h2>
-              <div className="alert-info text-sm">{t('otp_sent')} <strong>{form.phone}</strong></div>
-              <div>
-                <label className="label">{t('enter_6_digit_otp')}</label>
-                <input type="text" value={form.otp} onChange={e => update('otp', e.target.value.replace(/\D/, ''))}
-                  className="input-field text-center text-2xl tracking-widest font-bold" maxLength={6} placeholder="------" />
-              </div>
-              <button onClick={verifyOtp} className="btn-primary w-full py-3">Verify OTP <ArrowRight size={16} className="inline ml-1" /></button>
-              
-              <div className="text-center text-sm">
-                {timer > 0 ? (
-                  <p className="text-gray-500">{t('resend_otp_in')} <span className="font-semibold text-agro-green">00:{timer.toString().padStart(2, '0')}</span></p>
-                ) : (
-                  <p className="text-gray-500">
-                    Didn't receive code?{' '}
-                    <button onClick={sendOTP} className="text-agro-green font-semibold hover:underline cursor-pointer" disabled={loading}>
-                      Resend OTP
-                    </button>
-                  </p>
-                )}
-              </div>
-
-              <button onClick={() => setStep(0)} className="btn-ghost w-full"><ArrowLeft size={16} className="inline mr-1" />Back</button>
-            </div>
-          )}
-
-          {/* Step 2: Farm Details */}
-          {step === 2 && (
             <div className="space-y-4 animate-fade-in">
               <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><Sprout size={18} className="text-primary-600" />{t('farm_details')}</h2>
               <div>
@@ -290,7 +255,7 @@ export default function Register() {
                 {loading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle size={18} />}
                 {loading ? 'Submitting...' : 'Submit Registration'}
               </button>
-              <button onClick={() => setStep(1)} className="btn-ghost w-full"><ArrowLeft size={16} className="inline mr-1" />Back</button>
+              <button onClick={() => setStep(0)} className="btn-ghost w-full"><ArrowLeft size={16} className="inline mr-1" />Back</button>
             </div>
           )}
         </div>

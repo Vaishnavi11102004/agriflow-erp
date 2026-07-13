@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
-import api from '../../services/api/axios';
-import { TrendingUp, Plus, X, CheckCircle, Edit, Search } from 'lucide-react';
+import marketService from '../../services/marketService';
+import { CACHE_TIMES } from '../../lib/queryConfig';
+import { TrendingUp, Plus, X, CheckCircle, Edit, Search, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const CROP_TYPES = ['Rice', 'Wheat', 'Maize', 'Cotton', 'Groundnut', 'Sugarcane'];
@@ -17,27 +18,44 @@ export default function MarketRates() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [form, setForm] = useState({ id: null, crop_type: 'Rice', grade: 'A', price_per_kg: '' });
+  const [bulkPrices, setBulkPrices] = useState({ A: '', B: '', C: '' });
 
   const { data: rates = [], isLoading: loading } = useQuery({
     queryKey: ['admin-market-rates'],
-    queryFn: async () => {
-      const res = await api.get('/admin/market-rates');
-      return res.data;
-    }
+    queryFn: () => marketService.getRates(),
+    ...CACHE_TIMES.LONG
   });
 
-  const openAdd = () => { setForm({ id: null, crop_type: 'Rice', grade: 'A', price_per_kg: '' }); setShowModal(true); };
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this rate?')) return;
+    try {
+      await marketService.deleteRate(id);
+      toast.success('Rate deleted');
+      queryClient.invalidateQueries({ queryKey: ['admin-market-rates'] });
+    } catch { toast.error(t('action_failed')); }
+  };
+
+  const openAdd = () => { setForm({ id: null, crop_type: 'Rice', grade: 'A', price_per_kg: '' }); setBulkPrices({ A: '', B: '', C: '' }); setShowModal(true); };
   const openEdit = (r) => { setForm({ ...r }); setShowModal(true); };
+
+  const today = new Date().toISOString().split('T')[0];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
-      const payload = { ...form, price_per_kg: parseFloat(form.price_per_kg) };
-      if (form.id) await api.patch(`/admin/market-rates/${form.id}`, payload);
-      else await api.post('/admin/market-rates', payload);
-      toast.success(form.id ? t('rate_updated') : t('rate_added'));
-      setShowModal(false); 
+      if (form.id) {
+        await marketService.updateRate(form.id, { price_per_kg: parseFloat(form.price_per_kg), effective_date: today });
+        toast.success(t('rate_updated'));
+      } else {
+        const entries = GRADES.filter(g => bulkPrices[g] !== '');
+        if (!entries.length) { toast.error('Enter at least one grade price'); setSaving(false); return; }
+        await Promise.all(entries.map(g =>
+          marketService.setRate({ crop_type: form.crop_type, grade: g, price_per_kg: parseFloat(bulkPrices[g]), effective_date: today }, user?.id)
+        ));
+        toast.success(t('rate_added'));
+      }
+      setShowModal(false);
       queryClient.invalidateQueries({ queryKey: ['admin-market-rates'] });
     } catch { toast.error(t('save_failed')); }
     finally { setSaving(false); }
@@ -78,7 +96,10 @@ export default function MarketRates() {
                       <div className="flex items-center gap-4">
                         <span className="font-bold text-gray-800">₹{r.price_per_kg}<span className="text-xs text-gray-500 font-normal">/kg</span></span>
                         {user?.role === 'super_admin' && (
-                          <button onClick={() => openEdit(r)} className="p-1.5 rounded bg-white border border-gray-200 text-gray-500 hover:text-primary-600 hover:border-primary-200 shadow-sm transition-all"><Edit size={14} /></button>
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => openEdit(r)} className="p-1.5 rounded bg-white border border-gray-200 text-gray-500 hover:text-primary-600 hover:border-primary-200 shadow-sm transition-all"><Edit size={14} /></button>
+                            <button onClick={() => handleDelete(r.id)} className="p-1.5 rounded bg-white border border-gray-200 text-gray-500 hover:text-red-600 hover:border-red-200 shadow-sm transition-all"><Trash2 size={14} /></button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -106,16 +127,22 @@ export default function MarketRates() {
                   {CROP_TYPES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="label">{t("grade")} *</label>
-                <select value={form.grade} onChange={e => setForm(f => ({ ...f, grade: e.target.value }))} className="input-field" disabled={!!form.id}>
-                  {GRADES.map(g => <option key={g} value={g}>{t('grade')} {g}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="label">{t("price_per_kg")} *</label>
-                <input type="number" value={form.price_per_kg} onChange={e => setForm(f => ({ ...f, price_per_kg: e.target.value }))} className="input-field" step="0.5" min="0.5" required />
-              </div>
+              {form.id ? (
+                <div>
+                  <label className="label">{t("price_per_kg")} ({t('grade')} {form.grade}) *</label>
+                  <input type="number" value={form.price_per_kg} onChange={e => setForm(f => ({ ...f, price_per_kg: e.target.value }))} className="input-field" step="0.5" min="0.5" required />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <label className="label">{t("price_per_kg")} *</label>
+                  {GRADES.map(g => (
+                    <div key={g} className="flex items-center gap-3">
+                      <span className={`w-16 text-center text-xs font-bold px-2 py-1 rounded-full ${g === 'A' ? 'bg-green-100 text-green-700' : g === 'B' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>{t('grade')} {g}</span>
+                      <input type="number" value={bulkPrices[g]} onChange={e => setBulkPrices(p => ({ ...p, [g]: e.target.value }))} placeholder={`₹ per kg`} className="input-field flex-1" step="0.5" min="0.5" />
+                    </div>
+                  ))}
+                </div>
+              )}
             </form>
             <div className="modal-footer">
               <button onClick={() => setShowModal(false)} className="btn-ghost">{t("cancel")}</button>

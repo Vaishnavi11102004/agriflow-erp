@@ -5,7 +5,7 @@ import adminService from '../../services/adminService';
 import { useAuth } from '../../context/AuthContext';
 import { Shield, Plus, X, CheckCircle, Search, Edit2, Ban, Play } from 'lucide-react';
 import toast from 'react-hot-toast';
-import validators from '../../utils/validators';
+import validators, { sanitizeMobileInput } from '../../utils/validators';
 import FieldError from '../../components/shared/FieldError';
 
 export default function ManageAdmins() {
@@ -22,14 +22,9 @@ export default function ManageAdmins() {
     let error = null;
     switch (field) {
       case 'name': error = validators.name(value); break;
-      case 'phone':
-        if (!value) error = 'Phone Number is required.';
-        else if (!/^\d+$/.test(value)) error = 'Phone Number must contain only digits.';
-        else if (value.length !== 10) error = 'Phone Number must contain exactly 10 digits.';
-        else error = null;
-        break;
+      case 'phone': error = validators.phone(value); break;
       case 'email': error = validators.emailRequired(value); break;
-      case 'password': 
+      case 'password':
         if (!form.id && !value) error = 'Password is required';
         else if (value) error = validators.password(value);
         break;
@@ -42,6 +37,21 @@ export default function ManageAdmins() {
   const updateForm = (field, value) => {
     setForm(f => ({ ...f, [field]: value }));
     if (fieldErrors[field]) validateField(field, value);
+  };
+
+  // Mobile number validates live (every keystroke/paste), not just on blur —
+  // sanitized so non-digits can never enter the field in the first place.
+  const handlePhoneChange = (e) => {
+    const clean = sanitizeMobileInput(e.target.value);
+    setForm(f => ({ ...f, phone: clean }));
+    validateField('phone', clean);
+  };
+
+  const handlePhonePaste = (e) => {
+    e.preventDefault();
+    const clean = sanitizeMobileInput(e.clipboardData.getData('text'));
+    setForm(f => ({ ...f, phone: clean }));
+    validateField('phone', clean);
   };
 
   const { data: managers = [], isLoading: loading } = useQuery({
@@ -194,9 +204,22 @@ export default function ManageAdmins() {
                 <FieldError error={fieldErrors.name} />
               </div>
               <div>
-                <label className="label">{t("phone_login_id")} *</label>
-                <input value={form.phone} onChange={e => updateForm('phone', e.target.value)} onBlur={() => validateField('phone', form.phone)} className={`input-field ${fieldErrors.phone ? 'border-red-400 ring-1 ring-red-200' : ''}`} required maxLength={10} />
-                <FieldError error={fieldErrors.phone} />
+                <label className="label" htmlFor="manager-phone">{t("phone_login_id")} *</label>
+                <input
+                  id="manager-phone"
+                  value={form.phone}
+                  onChange={handlePhoneChange}
+                  onPaste={handlePhonePaste}
+                  onBlur={() => validateField('phone', form.phone)}
+                  className={`input-field ${fieldErrors.phone ? 'border-red-400 ring-1 ring-red-200' : ''}`}
+                  required
+                  maxLength={10}
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  aria-invalid={!!fieldErrors.phone}
+                  aria-describedby={fieldErrors.phone ? 'manager-phone-error' : undefined}
+                />
+                <FieldError error={fieldErrors.phone} id="manager-phone-error" />
               </div>
               <div>
                 <label className="label">{t("email")} *</label>
