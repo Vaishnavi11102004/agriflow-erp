@@ -1,9 +1,11 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Leaf, LogIn, PhoneCall, ArrowLeft, ArrowRight, MessageCircle, Mail, MapPin } from 'lucide-react';
 
 export default function GetStarted() {
   const { t } = useTranslation();
+  const location = useLocation();
+  const fromAction = location.state?.from;
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 via-white to-emerald-50/40">
@@ -36,6 +38,7 @@ export default function GetStarted() {
             {/* Option 1 — Already have credentials */}
             <Link
               to="/login"
+              state={fromAction ? { from: fromAction } : undefined}
               className="group relative bg-white rounded-2xl border-2 border-gray-100 p-6 sm:p-8 hover:border-emerald-400 hover:shadow-xl hover:shadow-emerald-100/50 transition-all duration-300 flex flex-col items-center text-center"
             >
               <div className="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center mb-5 group-hover:bg-emerald-500 group-hover:scale-110 transition-all duration-300">

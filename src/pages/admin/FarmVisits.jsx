@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import api from '../../services/api/axios';
+import adminService from '../../services/adminService';
+import managerService from '../../services/managerService';
+import storageService from '../../services/storageService';
 import {
   MapPin, Search, CheckCircle, Navigation, Upload, Camera,
   Image as ImageIcon, Calendar, Clock, Phone, Bell, X, Plus
@@ -34,6 +36,7 @@ export default function FarmVisits() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [selectedPhoto, setSelectedPhoto] = useState({});
+  const [uploadingPhoto, setUploadingPhoto] = useState({});
   const [visitDates, setVisitDates] = useState({});
   const [completingId, setCompletingId] = useState(null);
   const [previewPhoto, setPreviewPhoto] = useState(null);
@@ -50,31 +53,23 @@ export default function FarmVisits() {
 
   const { data: managers = [] } = useQuery({
     queryKey: ['admin-managers'],
-    queryFn: async () => {
-      const res = await api.get('/admin/managers');
-      return res.data;
-    },
+    queryFn: () => adminService.getManagers(),
     enabled: isSuperAdmin
   });
 
   const { data: visits = [], isLoading: loading } = useQuery({
     queryKey: ['admin-visits'],
-    queryFn: async () => {
-      const res = await api.get('/admin/visits');
-      return res.data;
-    }
+    queryFn: () => managerService.getVisits(user?.id, user?.role)
   });
 
   const handleAction = async (id, status) => {
     setCompletingId(id);
     try {
-      const payload = { status, actual_date: new Date().toISOString().split('T')[0] };
-      // Upload photo as a real file if one was selected
+      const visitData = { status, actual_date: new Date().toISOString().split('T')[0] };
       if (selectedPhoto[id]) {
-        const uploadRes = await api.post('/upload', { image: selectedPhoto[id] });
-        payload.report = uploadRes.data.url; // store the file URL, not base64
+        visitData.report = selectedPhoto[id]; // already a public URL from Supabase
       }
-      await api.patch(`/admin/visits/${id}`, payload);
+      await managerService.updateVisit(id, visitData, user?.id);
       toast.success('Visit marked as ' + status);
       setSelectedPhoto(prev => { const n = { ...prev }; delete n[id]; return n; });
       queryClient.invalidateQueries({ queryKey: ['admin-visits'] });
@@ -88,7 +83,7 @@ export default function FarmVisits() {
   const updateScheduledDate = async (id) => {
     if (!visitDates[id]) return toast.error('Please select a date first');
     try {
-      await api.patch(`/admin/visits/${id}`, { scheduled_date: visitDates[id] });
+      await managerService.updateVisit(id, { scheduled_date: visitDates[id] }, user?.id);
       toast.success('Visit date updated!');
       queryClient.invalidateQueries({ queryKey: ['admin-visits'] });
     } catch {
@@ -98,7 +93,7 @@ export default function FarmVisits() {
 
   const openAddModal = async () => {
     try {
-      const { data } = await api.get('/admin/active-crops');
+      const data = await managerService.getActiveCrops();
       setActiveCrops(data);
       setAddForm({ crop_id: '', farmer_id: '', admin_id: '', visit_month: '', scheduled_date: '' });
       setShowAddModal(true);
@@ -112,7 +107,7 @@ export default function FarmVisits() {
     if (!addForm.crop_id || !addForm.visit_month || !addForm.scheduled_date) return toast.error('All fields required');
     setAdding(true);
     try {
-      await api.post('/admin/visits', addForm);
+      await managerService.scheduleVisit(addForm, user?.id, user?.role);
       toast.success('Visit scheduled successfully');
       setShowAddModal(false);
       queryClient.invalidateQueries({ queryKey: ['admin-visits'] });
@@ -125,7 +120,7 @@ export default function FarmVisits() {
 
   const handleAssignManager = async (visitId, managerId) => {
     try {
-      await api.patch(`/admin/visits/${visitId}`, { admin_id: managerId || null });
+      await managerService.updateVisit(visitId, { admin_id: managerId || null }, user?.id);
       toast.success('Manager assigned successfully');
       queryClient.invalidateQueries({ queryKey: ['admin-visits'] });
       if (detailVisit?.id === visitId) {
@@ -142,13 +137,164 @@ export default function FarmVisits() {
     }
   };
 
-  const handlePhotoUpload = (e, id) => {
+  const haversineKm = (lat1, lon1, lat2, lon2) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  const geocodeAddress = async (address) => {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`,
+      { headers: { 'Accept-Language': 'en' } }
+    );
+    const data = await res.json();
+    if (!data.length) return null;
+    return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+  };
+
+  const GEOFENCE_RADIUS_KM = 0.5; // 500 metres
+
+  const getExifOrientation = (file) =>
+    new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const view = new DataView(e.target.result);
+        if (view.getUint16(0, false) !== 0xFFD8) return resolve(1);
+        const length = view.byteLength;
+        let offset = 2;
+        while (offset < length) {
+          const marker = view.getUint16(offset, false);
+          offset += 2;
+          if (marker === 0xFFE1) {
+            if (view.getUint32(offset += 2, false) !== 0x45786966) return resolve(1);
+            const little = view.getUint16(offset += 6, false) === 0x4949;
+            offset += view.getUint32(offset + 4, little);
+            const tags = view.getUint16(offset, little);
+            offset += 2;
+            for (let i = 0; i < tags; i++) {
+              if (view.getUint16(offset + i * 12, little) === 0x0112)
+                return resolve(view.getUint16(offset + i * 12 + 8, little));
+            }
+          } else if ((marker & 0xFF00) !== 0xFF00) break;
+          else offset += view.getUint16(offset, false);
+        }
+        resolve(1);
+      };
+      reader.readAsArrayBuffer(file.slice(0, 64 * 1024));
+    });
+
+  const stampImageWithLocation = (dataUrl, { latitude, longitude, accuracy, address }, orientation) =>
+    new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const swap = orientation >= 5 && orientation <= 8;
+        const w = swap ? img.height : img.width;
+        const h = swap ? img.width : img.height;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+
+        // Apply EXIF rotation so image is always upright
+        const transforms = {
+          2: [-1,0,0,1,w,0], 3: [-1,0,0,-1,w,h], 4: [1,0,0,-1,0,h],
+          5: [0,1,1,0,0,0],  6: [0,1,-1,0,h,0],  7: [0,-1,-1,0,h,w],
+          8: [0,-1,1,0,0,w],
+        };
+        if (transforms[orientation]) {
+          const [a,b,c,d,e,f] = transforms[orientation];
+          ctx.transform(a,b,c,d,e,f);
+        }
+        ctx.drawImage(img, 0, 0);
+        ctx.setTransform(1,0,0,1,0,0); // reset
+
+        const lines = [
+          `Lat: ${latitude.toFixed(6)}`,
+          `Lng: ${longitude.toFixed(6)}`,
+          accuracy ? `Acc: \u00b1${accuracy.toFixed(0)}m` : null,
+          address ? `Farm: ${address}` : null,
+          new Date().toLocaleString('en-IN'),
+        ].filter(Boolean);
+
+        const fontSize = Math.max(16, Math.round(w * 0.025));
+        const pad = Math.round(fontSize * 0.7);
+        const lineH = fontSize + pad;
+        const boxH = lines.length * lineH + pad * 2;
+
+        ctx.fillStyle = 'rgba(0,0,0,0.62)';
+        ctx.fillRect(0, h - boxH, w, boxH);
+
+        ctx.font = `bold ${fontSize}px monospace`;
+        ctx.fillStyle = '#ffffff';
+        lines.forEach((line, i) => {
+          ctx.fillText(line, pad, h - boxH + pad + fontSize + i * lineH);
+        });
+
+        resolve(canvas.toDataURL('image/jpeg', 0.88));
+      };
+      img.src = dataUrl;
+    });
+
+  const handlePhotoUpload = async (e, id, cropAddress) => {
     const file = e.target.files[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) return toast.error('Image must be under 5MB');
-    const reader = new FileReader();
-    reader.onloadend = () => setSelectedPhoto(prev => ({ ...prev, [id]: reader.result }));
-    reader.readAsDataURL(file);
+
+    setUploadingPhoto(prev => ({ ...prev, [id]: true }));
+
+    let gpsCoords = null;
+
+    // --- Geofence + GPS stamp ---
+    try {
+      const pos = await new Promise((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 })
+      );
+      gpsCoords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy };
+
+      if (cropAddress) {
+        const farmCoords = await geocodeAddress(cropAddress);
+        if (farmCoords) {
+          const distKm = haversineKm(gpsCoords.latitude, gpsCoords.longitude, farmCoords.lat, farmCoords.lon);
+          if (distKm > GEOFENCE_RADIUS_KM) {
+            toast.error(`You are ${(distKm * 1000).toFixed(0)}m away from the farm. Must be within 500m to upload.`);
+            setUploadingPhoto(prev => ({ ...prev, [id]: false }));
+            e.target.value = '';
+            return;
+          }
+        }
+      }
+    } catch {
+      toast('Location unavailable — geofence skipped.', { icon: '⚠️' });
+    }
+    // --- End geofence ---
+
+    try {
+      const orientation = await getExifOrientation(file);
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          let imageData = reader.result;
+          if (gpsCoords) {
+            imageData = await stampImageWithLocation(imageData, { ...gpsCoords, address: cropAddress }, orientation);
+          }
+          const uploadRes = await storageService.uploadBase64(imageData, 'visit');
+          setSelectedPhoto(prev => ({ ...prev, [id]: uploadRes.url }));
+          toast.success('Photo uploaded!');
+        } catch {
+          toast.error('Photo upload failed');
+        } finally {
+          setUploadingPhoto(prev => ({ ...prev, [id]: false }));
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      setUploadingPhoto(prev => ({ ...prev, [id]: false }));
+    }
   };
 
   const filtered = visits.filter(v => {
@@ -326,15 +472,28 @@ export default function FarmVisits() {
                     <label className="flex-1 flex flex-col items-center justify-center gap-1 py-3 bg-blue-50 text-blue-700 rounded-xl cursor-pointer hover:bg-blue-100 transition-colors border border-blue-200 border-dashed">
                       <Upload size={18} />
                       <span className="text-xs font-semibold">Upload Image</span>
-                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handlePhotoUpload(e, v.id)} />
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handlePhotoUpload(e, v.id, v.crop_address)} />
+                    </label>
+                    <label className="flex-1 flex flex-col items-center justify-center gap-1 py-3 bg-green-50 text-green-700 rounded-xl cursor-pointer hover:bg-green-100 transition-colors border border-green-200 border-dashed">
+                      <Camera size={18} />
+                      <span className="text-xs font-semibold">Take Photo</span>
+                      <input type="file" capture="environment" className="hidden" onChange={(e) => handlePhotoUpload(e, v.id, v.crop_address)} />
                     </label>
                   </div>
 
-                  {selectedPhoto[v.id] && (
+                  {uploadingPhoto[v.id] && (
+                    <div className="flex items-center justify-center gap-2 py-3 bg-blue-50 rounded-xl">
+                      <div className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
+                      <span className="text-xs text-blue-600 font-medium">Uploading photo...</span>
+                    </div>
+                  )}
+
+                  {selectedPhoto[v.id] && !uploadingPhoto[v.id] && (
                     <div className="relative mt-1 group cursor-pointer" onClick={() => setPreviewPhoto(selectedPhoto[v.id])}>
-                      <div
-                        className="h-28 w-full rounded-xl bg-cover bg-center shadow-inner border border-gray-200"
-                        style={{ backgroundImage: `url(${selectedPhoto[v.id]})` }}
+                      <img
+                        src={selectedPhoto[v.id]}
+                        alt="Farm visit preview"
+                        className="h-28 w-full object-contain rounded-xl shadow-inner border border-gray-200 bg-gray-50"
                       />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded-xl transition-colors flex items-center justify-center">
                         <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-semibold bg-black/50 px-2 py-1 rounded-full">Preview</span>
@@ -354,7 +513,7 @@ export default function FarmVisits() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleAction(v.id, 'completed')}
-                      disabled={completingId === v.id}
+                      disabled={completingId === v.id || uploadingPhoto[v.id]}
                       className="btn-primary w-full flex justify-center items-center gap-1 text-sm disabled:opacity-70"
                     >
                       {completingId === v.id
@@ -379,7 +538,7 @@ export default function FarmVisits() {
                   )}
                   {v.report && (
                     <img
-                      src={v.report.startsWith('data:image') ? v.report : v.report}
+                      src={v.report}
                       alt="Farm visit photo"
                       className="w-full h-32 object-cover rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:opacity-90 transition-opacity"
                       onClick={() => setPreviewPhoto(v.report)}
@@ -555,9 +714,9 @@ export default function FarmVisits() {
                 <h4 className="font-bold text-gray-700 mb-3 text-sm flex items-center gap-1.5"><ImageIcon size={14} className="text-gray-400"/> Uploaded Photo</h4>
                 {detailVisit.report ? (
                   <div className="rounded-xl overflow-hidden border border-gray-200">
-                    <img 
-                      src={detailVisit.report.startsWith('data:image') ? detailVisit.report : detailVisit.report} 
-                      alt="Farm visit" 
+                    <img
+                      src={detailVisit.report}
+                      alt="Farm visit"
                       className="w-full h-auto max-h-64 object-cover"
                     />
                   </div>

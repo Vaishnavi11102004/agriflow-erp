@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import api from '../../services/api/axios';
+import managerService from '../../services/managerService';
+import adminService from '../../services/adminService';
 import { Wheat, Search, CheckCircle, X, DollarSign, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
@@ -18,6 +19,7 @@ export default function GrainSalesAdmin() {
   const [filter, setFilter] = useState('all');
   const [showLogModal, setShowLogModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
+  const [selectedSale, setSelectedSale] = useState(null);
   const [paymentDescription, setPaymentDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -31,18 +33,12 @@ export default function GrainSalesAdmin() {
 
   const { data: sales = [], isLoading: loading } = useQuery({
     queryKey: ['admin-grain-sales'],
-    queryFn: async () => {
-      const res = await api.get('/admin/grain-sales');
-      return res.data;
-    }
+    queryFn: () => managerService.getGrainSales()
   });
 
   const { data: farmers = [], isLoading: farmersLoading } = useQuery({
     queryKey: ['admin-farmers'],
-    queryFn: async () => {
-      const res = await api.get('/admin/farmers');
-      return res.data;
-    }
+    queryFn: () => adminService.getFarmers()
   });
 
   const handleLogCrop = async (e) => {
@@ -61,20 +57,20 @@ export default function GrainSalesAdmin() {
 
     setSaving(true);
     try {
-      await api.post('/admin/grain-sales/procure', {
+      await managerService.procureCrop({
         farmer_id: parseInt(form.farmer_id),
         grain_type: form.grain_type,
         grade: form.grade,
         raw_material_kg: rawQty,
         good_material_kg: goodQty,
         wastage_kg: wastageQty
-      });
+      }, user?.id);
       toast.success('Crop procurement logged successfully!');
       setShowLogModal(false);
       setForm({ farmer_id: '', grain_type: 'Rice', grade: 'A', raw_material_kg: '', good_material_kg: '', wastage_kg: '' });
       queryClient.invalidateQueries({ queryKey: ['admin-grain-sales'] });
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to log crop');
+      toast.error(err.message || 'Failed to log crop');
     } finally {
       setSaving(false);
     }
@@ -88,13 +84,13 @@ export default function GrainSalesAdmin() {
   const handleConfirmPayment = async (sale) => {
     setSaving(true);
     try {
-      await api.patch(`/admin/grain-sales/${sale.id}/pay`, { description: paymentDescription });
+      await managerService.payGrainSale(sale.id, paymentDescription, user?.id);
       toast.success(t('payment_successful', 'Farmer paid successfully'));
       queryClient.invalidateQueries({ queryKey: ['admin-grain-sales'] });
       generateInvoice(sale);
       setSelectedPayment(null);
     } catch (err) {
-      toast.error(err.response?.data?.error || t('action_failed'));
+      toast.error(err.message || t('action_failed'));
     } finally {
       setSaving(false);
     }
@@ -200,7 +196,30 @@ export default function GrainSalesAdmin() {
       </div>
 
       <div className="glass-card overflow-hidden">
-        <div className="table-container">
+        {/* Mobile cards */}
+        <div className="sm:hidden divide-y divide-gray-100">
+          {loading ? (
+            <div className="py-10 flex justify-center"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>
+          ) : filtered.length === 0 ? (
+            <p className="text-center py-10 text-gray-400">No procurements found.</p>
+          ) : filtered.map(s => (
+            <button key={s.id} onClick={() => setSelectedSale(s)} className="w-full text-left px-4 py-3 hover:bg-gray-50 active:bg-gray-100">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="font-semibold text-gray-800 text-sm">{s.farmer_name}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{s.grain_type} · Grade {s.grade}</p>
+                </div>
+                <span className={`badge ${statusBadge(s.status)}`}>{s.status}</span>
+              </div>
+              <div className="flex justify-between mt-2 text-xs text-gray-500">
+                <span>{s.good_material_kg} kg good</span>
+                <span className="font-semibold text-gray-700">₹{(s.total_amount || 0).toLocaleString('en-IN')}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+        {/* Desktop table */}
+        <div className="hidden sm:block table-container">
           <table className="data-table">
             <thead><tr>
               <th>{t("farmer")}</th><th>{t("grain_grade")}</th><th>{t("good_qty_kg")}</th><th>{t("est_amount")}</th><th>{t("status")}</th><th>{t("date")}</th><th>{t("action")}</th>
@@ -218,7 +237,7 @@ export default function GrainSalesAdmin() {
                       <td className="text-green-600 font-semibold">{s.good_material_kg}</td>
                       <td className="font-bold">₹{(s.total_amount || 0).toLocaleString('en-IN')}</td>
                       <td><span className={`badge ${statusBadge(s.status)}`}>{s.status}</span></td>
-                      <td className="text-xs">{new Date(s.created_at * 1000).toLocaleDateString('en-IN')}</td>
+                      <td className="text-xs">{new Date(s.created_at).toLocaleDateString('en-IN')}</td>
                       <td>
                         <div className="flex gap-2 items-center">
                           {s.status === 'received' && (
@@ -245,8 +264,8 @@ export default function GrainSalesAdmin() {
       </div>
 
       {showLogModal && (
-        <div className="modal-overlay" onClick={() => setShowLogModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay items-start pt-4 sm:items-center sm:pt-0" onClick={() => setShowLogModal(false)}>
+          <div className="modal-content w-full mx-3 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div className="flex items-center gap-3"><div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center"><Wheat size={20} className="text-amber-600" /></div><div><h3 className="font-bold text-gray-800">Log Received Crop</h3></div></div>
               <button onClick={() => setShowLogModal(false)} className="btn-icon"><X size={18} /></button>
@@ -304,9 +323,44 @@ export default function GrainSalesAdmin() {
         </div>
       )}
 
+      {selectedSale && (
+        <div className="sm:hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-4" onClick={() => setSelectedSale(null)}>
+          <div className="bg-white w-full rounded-2xl p-5 space-y-4 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-gray-800">Procurement Details</h3>
+              <button onClick={() => setSelectedSale(null)} className="btn-icon"><X size={18} /></button>
+            </div>
+            {[
+              ['Farmer', selectedSale.farmer_name],
+              ['Crop Type', selectedSale.grain_type],
+              ['Grade', `Grade ${selectedSale.grade}`],
+              ['Raw Material', `${selectedSale.raw_material_kg} kg`],
+              ['Good Qty', `${selectedSale.good_material_kg} kg`],
+              ['Wastage', `${selectedSale.wastage_kg || 0} kg`],
+              ['Est. Amount', `₹${(selectedSale.total_amount || 0).toLocaleString('en-IN')}`],
+              ['Date', new Date(selectedSale.created_at).toLocaleDateString('en-IN')],
+            ].map(([label, value]) => (
+              <div key={label} className="flex justify-between text-sm">
+                <span className="text-gray-500">{label}</span>
+                <span className="font-medium text-gray-800">{value}</span>
+              </div>
+            ))}
+            <div className="flex justify-between text-sm items-center">
+              <span className="text-gray-500">Status</span>
+              <span className={`badge ${statusBadge(selectedSale.status)}`}>{selectedSale.status}</span>
+            </div>
+            {selectedSale.status === 'received' && (
+              <button onClick={() => { setSelectedSale(null); handlePayFarmer(selectedSale); }} className="btn-primary w-full flex items-center justify-center gap-2">
+                <DollarSign size={16} /> Pay Farmer
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {selectedPayment && (
-        <div className="modal-overlay" onClick={() => setSelectedPayment(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay items-start pt-4 sm:items-center sm:pt-0" onClick={() => setSelectedPayment(null)}>
+          <div className="modal-content w-full mx-3 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">

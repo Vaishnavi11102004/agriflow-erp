@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import api from '../../services/api/axios';
-import { Users, Search, MapPin, Eye, X, Phone, Mail, Calendar, Landmark, User, Shield } from 'lucide-react';
+import adminService from '../../services/adminService';
+import { Search, MapPin, Eye, X, Phone, Mail, Calendar, Landmark, Shield } from 'lucide-react';
 
 export default function AllFarmers() {
   const { t } = useTranslation();
@@ -11,57 +11,112 @@ export default function AllFarmers() {
 
   const { data: farmers = [], isLoading: loading } = useQuery({
     queryKey: ['admin-farmers'],
-    queryFn: async () => {
-      const res = await api.get('/admin/farmers');
-      return res.data;
-    }
+    queryFn: () => adminService.getFarmers()
   });
 
-  const filtered = farmers.filter(f => f.name.toLowerCase().includes(search.toLowerCase()) || f.phone.includes(search));
+  const filtered = farmers.filter(f =>
+    f.name.toLowerCase().includes(search.toLowerCase()) || f.phone.includes(search)
+  );
   const activeCount = farmers.filter(f => f.status === 'active').length;
   const pendingCount = farmers.filter(f => f.status === 'pending').length;
 
   return (
     <div className="animate-fade-in">
-      <div className="flex justify-between items-end mb-8">
-        <div><h1 className="text-3xl font-bold text-gray-900">{t("global_farmer_directory")}</h1><p className="text-gray-500 mt-1">{t("global_farmer_directory_desc")}</p></div>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">{t('global_farmer_directory')}</h1>
+          <p className="text-gray-500 mt-1">{t('global_farmer_directory_desc')}</p>
+        </div>
         <div className="flex gap-4">
-          <div className="bg-white border border-gray-200 px-4 py-2 rounded-xl text-center shadow-sm"><p className="text-xs text-gray-500 uppercase tracking-wider font-bold">{t("active")}</p><p className="text-xl font-bold text-green-500">{activeCount}</p></div>
-          <div className="bg-white border border-gray-200 px-4 py-2 rounded-xl text-center shadow-sm"><p className="text-xs text-gray-500 uppercase tracking-wider font-bold">{t("pending")}</p><p className="text-xl font-bold text-yellow-500">{pendingCount}</p></div>
+          <div className="bg-white border border-gray-200 px-4 py-2 rounded-xl text-center shadow-sm">
+            <p className="text-xs text-gray-500 uppercase tracking-wider font-bold">{t('active')}</p>
+            <p className="text-xl font-bold text-green-500">{activeCount}</p>
+          </div>
+          <div className="bg-white border border-gray-200 px-4 py-2 rounded-xl text-center shadow-sm">
+            <p className="text-xs text-gray-500 uppercase tracking-wider font-bold">{t('pending')}</p>
+            <p className="text-xl font-bold text-yellow-500">{pendingCount}</p>
+          </div>
         </div>
       </div>
 
       <div className="relative mb-6">
         <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t("search_by_name_phone")} className="input-field pl-11 py-3" />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('search_by_name_phone')} className="input-field pl-11 py-3" />
       </div>
 
       <div className="glass-card overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile cards */}
+        <div className="sm:hidden divide-y divide-gray-100">
+          {loading
+            ? <div className="flex justify-center py-10"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>
+            : filtered.length === 0
+              ? <p className="text-center py-10 text-gray-400 text-sm">{t('no_farmers_found')}</p>
+              : filtered.map(f => (
+                <div key={f.id} className="p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-bold text-sm shrink-0">
+                        {f.name?.[0]?.toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-800 text-sm">{f.name}</p>
+                        <p className="text-xs text-gray-500">{f.phone}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${f.status === 'active' ? 'bg-green-100 text-green-600' : f.status === 'rejected' ? 'bg-red-100 text-red-600' : 'bg-yellow-100 text-yellow-600'}`}>
+                        {t(f.status)}
+                      </span>
+                      <button onClick={() => setSelectedFarmer(f)} className="p-1.5 bg-gray-100 text-gray-500 hover:text-primary-600 rounded-lg hover:bg-primary-50 transition-colors">
+                        <Eye size={15} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 pl-12">
+                    {f.address && <span className="flex items-center gap-1"><MapPin size={11} />{f.address}</span>}
+                    <span className="text-primary-600 font-semibold">{f.acres_of_land || 0} {t('acres')}</span>
+                    <span className="flex items-center gap-1"><Calendar size={11} />{new Date(f.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))
+          }
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50">
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("farmer_details")}</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("contact")}</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("location_land")}</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("status")}</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t("joined_date")}</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">{t("view")}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('farmer_details')}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('contact')}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('location_land')}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('status')}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('joined_date')}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">{t('view')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {loading ? <tr><td colSpan={6} className="text-center py-10"><div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto" /></td></tr>
-                : filtered.length === 0 ? <tr><td colSpan={6} className="text-center py-10 text-gray-400">{t("no_farmers_found")}</td></tr>
+              {loading
+                ? <tr><td colSpan={6} className="text-center py-10"><div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto" /></td></tr>
+                : filtered.length === 0
+                  ? <tr><td colSpan={6} className="text-center py-10 text-gray-400">{t('no_farmers_found')}</td></tr>
                   : filtered.map(f => (
                     <tr key={f.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="p-4 font-semibold text-gray-800 flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 font-bold">{f.name?.[0]}</div>
-                        {f.name}
+                      <td className="p-4 font-semibold text-gray-800">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 font-bold">{f.name?.[0]}</div>
+                          {f.name}
+                        </div>
                       </td>
                       <td className="p-4 text-gray-600"><p>{f.phone}</p><p className="text-xs text-gray-400">{f.email || t('no_email')}</p></td>
-                      <td className="p-4 text-gray-600"><p className="flex items-center gap-1 text-sm"><MapPin size={14} className="text-gray-400"/>{f.address || 'Unknown'}</p><p className="text-xs text-primary-600 ml-5 font-semibold">{f.acres_of_land || 0} {t("acres")}</p></td>
+                      <td className="p-4 text-gray-600">
+                        <p className="flex items-center gap-1 text-sm"><MapPin size={14} className="text-gray-400" />{f.address || 'Unknown'}</p>
+                        <p className="text-xs text-primary-600 ml-5 font-semibold">{f.acres_of_land || 0} {t('acres')}</p>
+                      </td>
                       <td className="p-4">
-                        <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${f.status === 'active' ? 'bg-green-100 text-green-600' : f.status === 'rejected' ? 'bg-red-100 text-red-600' : 'bg-yellow-100 text-yellow-600'}`}>{t(f.status)}</span>
+                        <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${f.status === 'active' ? 'bg-green-100 text-green-600' : f.status === 'rejected' ? 'bg-red-100 text-red-600' : 'bg-yellow-100 text-yellow-600'}`}>
+                          {t(f.status)}
+                        </span>
                       </td>
                       <td className="p-4 text-gray-500 text-sm">{new Date(f.created_at).toLocaleDateString()}</td>
                       <td className="p-4 text-right">
@@ -77,8 +132,8 @@ export default function AllFarmers() {
 
       {/* Farmer Detail Modal */}
       {selectedFarmer && (
-        <div className="modal-overlay" onClick={() => setSelectedFarmer(null)}>
-          <div className="modal-content max-w-lg" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay items-start pt-4 sm:items-center sm:pt-0" onClick={() => setSelectedFarmer(null)}>
+          <div className="modal-content max-w-lg w-full mx-3 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-bold text-lg">
@@ -120,7 +175,7 @@ export default function AllFarmers() {
                   <Landmark size={16} className="text-primary-500 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">{t('land_acres') || 'Land'}</p>
-                    <p className="text-sm font-semibold text-gray-800">{selectedFarmer.acres_of_land || selectedFarmer.land_acres || 0} Acres</p>
+                    <p className="text-sm font-semibold text-gray-800">{selectedFarmer.acres_of_land || 0} Acres</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">

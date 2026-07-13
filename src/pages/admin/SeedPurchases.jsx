@@ -1,21 +1,23 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
-import api from '../../services/api/axios';
-import { ShoppingBag, Search, Download, FileText } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import adminService from '../../services/adminService';
+import { useAuth } from '../../context/AuthContext';
+import { ShoppingBag, Search, Download, X, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function SeedPurchases() {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedPurchase, setSelectedPurchase] = useState(null);
+  const [actionLoading, setActionLoading] = useState(null);
 
   const { data: purchases = [], isLoading: loading } = useQuery({
     queryKey: ['admin-seed-purchases'],
-    queryFn: async () => {
-      const res = await api.get('/admin/seed-purchases');
-      return res.data;
-    }
+    queryFn: () => adminService.getSeedPurchases()
   });
 
   const filtered = purchases.filter(p => {
@@ -27,124 +29,51 @@ export default function SeedPurchases() {
     return matchStatus && matchSearch;
   });
 
-  const statusBadge = (s) => ({
-    paid: 'badge-green',
-    pending: 'badge-yellow',
-    failed: 'badge-red'
-  }[s] || 'badge-gray');
+  const statusBadge = (s) => ({ paid: 'badge-green', pending: 'badge-yellow', failed: 'badge-red' }[s] || 'badge-gray');
+
+  const handleApproveReject = async (id, status) => {
+    setActionLoading(id + status);
+    try {
+      await adminService.updateSeedPurchaseStatus(id, status, user?.id);
+      toast.success(`Purchase marked ${status}`);
+      queryClient.invalidateQueries({ queryKey: ['admin-seed-purchases'] });
+    } catch (err) {
+      toast.error(err.message || 'Action failed');
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   const downloadInvoice = (purchase) => {
-    const htmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Invoice - ${purchase.invoice_number || `SP-${purchase.id}`}</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', 'Segoe UI', sans-serif; padding: 40px; color: #333; background: #f8fafc; }
-        .invoice { background: #fff; padding: 48px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); max-width: 800px; margin: auto; }
-        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #16a34a; padding-bottom: 24px; margin-bottom: 32px; }
-        .logo { font-size: 28px; font-weight: 900; color: #16a34a; letter-spacing: -0.5px; }
-        .logo-sub { font-size: 12px; color: #64748b; margin-top: 2px; }
-        .invoice-title { text-align: right; }
-        .invoice-title h2 { font-size: 28px; color: #1f2937; font-weight: 800; letter-spacing: 1px; }
-        .invoice-number { font-size: 14px; color: #16a34a; font-weight: 600; margin-top: 4px; }
-        .invoice-date { font-size: 13px; color: #64748b; margin-top: 2px; }
-        .parties { display: flex; justify-content: space-between; margin-bottom: 32px; gap: 32px; }
-        .party { flex: 1; }
-        .party-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; font-weight: 700; margin-bottom: 8px; }
-        .party-name { font-size: 16px; font-weight: 700; color: #1f2937; }
-        .party-info { font-size: 13px; color: #64748b; line-height: 1.6; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 32px; }
-        th { text-align: left; padding: 14px 16px; background: #f1f5f9; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; border: 1px solid #e2e8f0; }
-        td { padding: 14px 16px; border: 1px solid #e2e8f0; font-size: 14px; color: #1e293b; }
-        .text-right { text-align: right; }
-        .total-row { background: #f0fdf4; }
-        .total-row td { font-weight: 800; font-size: 16px; color: #16a34a; }
-        .status { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; }
-        .status-paid { background: #dcfce7; color: #166534; }
-        .status-pending { background: #fef9c3; color: #854d0e; }
-        .status-failed { background: #fee2e2; color: #991b1b; }
-        .footer { text-align: center; color: #94a3b8; font-size: 12px; margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 20px; }
-        @media print { body { padding: 0; background: #fff; } .invoice { box-shadow: none; border-radius: 0; } }
-    </style>
-</head>
-<body>
-    <div class="invoice">
-        <div class="header">
-            <div>
-                <div class="logo">🌱 AgriFlow ERP</div>
-                <div class="logo-sub">Agricultural Management System</div>
-            </div>
-            <div class="invoice-title">
-                <h2>INVOICE</h2>
-                <div class="invoice-number">${purchase.invoice_number || `SP-${String(purchase.id).padStart(5, '0')}`}</div>
-                <div class="invoice-date">${purchase.created_at ? new Date(purchase.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : '-'}</div>
-            </div>
-        </div>
-
-        <div class="parties">
-            <div class="party">
-                <div class="party-label">Billed To</div>
-                <div class="party-name">${purchase.farmer_name || '-'}</div>
-                <div class="party-info">Phone: ${purchase.farmer_phone || '-'}</div>
-            </div>
-            <div class="party">
-                <div class="party-label">From</div>
-                <div class="party-name">AgriFlow Seeds Store</div>
-                <div class="party-info">Seed Purchase Invoice</div>
-            </div>
-        </div>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>Item</th>
-                    <th>Variety</th>
-                    <th class="text-right">Qty (kg)</th>
-                    <th class="text-right">Price/kg</th>
-                    <th class="text-right">Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>${purchase.seed_name || '-'}</td>
-                    <td>${purchase.seed_variety || '-'}</td>
-                    <td class="text-right">${purchase.quantity_kg || 0}</td>
-                    <td class="text-right">₹${parseFloat(purchase.price_per_kg || 0).toFixed(2)}</td>
-                    <td class="text-right">₹${parseFloat(purchase.total_amount || 0).toFixed(2)}</td>
-                </tr>
-                <tr class="total-row">
-                    <td colspan="4" class="text-right">Grand Total</td>
-                    <td class="text-right">₹${parseFloat(purchase.total_amount || 0).toFixed(2)}</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <div style="margin-bottom: 24px;">
-            <strong style="font-size: 13px; color: #475569;">Payment Status:</strong>
-            <span class="status status-${purchase.payment_status || 'pending'}">${(purchase.payment_status || 'pending').toUpperCase()}</span>
-        </div>
-        ${purchase.upi_id ? `<div style="margin-bottom: 8px;"><strong style="font-size: 13px; color: #475569;">UPI ID:</strong> <span style="font-size: 13px; color: #1e293b;">${purchase.upi_id}</span></div>` : ''}
-        ${purchase.transaction_id ? `<div style="margin-bottom: 8px;"><strong style="font-size: 13px; color: #475569;">Transaction ID:</strong> <span style="font-size: 13px; color: #1e293b;">${purchase.transaction_id}</span></div>` : ''}
-
-        <div class="footer">
-            AgriFlow Management System &copy; ${new Date().getFullYear()}<br>
-            <small>This is a system-generated invoice. No signature required.</small>
-        </div>
-    </div>
-</body>
-</html>`;
-
+    const htmlContent = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invoice - ${purchase.invoice_number || `SP-${purchase.id}`}</title>
+    <style>body{font-family:sans-serif;padding:40px;color:#333;background:#f8fafc}
+    .invoice{background:#fff;padding:48px;border-radius:16px;box-shadow:0 4px 6px -1px rgba(0,0,0,.1);max-width:800px;margin:auto}
+    .header{display:flex;justify-content:space-between;border-bottom:3px solid #16a34a;padding-bottom:24px;margin-bottom:32px}
+    .logo{font-size:28px;font-weight:900;color:#16a34a}
+    table{width:100%;border-collapse:collapse}th{background:#f1f5f9;padding:12px;text-align:left;font-size:12px;text-transform:uppercase}
+    td{padding:14px;border:1px solid #e2e8f0;font-size:14px}.text-right{text-align:right}
+    .total-row{background:#f0fdf4}.total-row td{font-weight:800;font-size:16px;color:#16a34a}
+    .footer{text-align:center;color:#94a3b8;font-size:12px;margin-top:40px;border-top:1px solid #e2e8f0;padding-top:20px}</style></head>
+    <body><div class="invoice">
+    <div class="header"><div class="logo">🌱 AgriFlow ERP</div>
+    <div style="text-align:right"><h2>INVOICE</h2><div>${purchase.invoice_number || `SP-${String(purchase.id).padStart(5,'0')}`}</div>
+    <div>${purchase.created_at ? new Date(purchase.created_at).toLocaleDateString('en-IN') : '-'}</div></div></div>
+    <p><strong>Farmer:</strong> ${purchase.farmer_name || '-'} | <strong>Phone:</strong> ${purchase.farmer_phone || '-'}</p>
+    <table><thead><tr><th>Item</th><th>Variety</th><th class="text-right">Qty (kg)</th><th class="text-right">Price/kg</th><th class="text-right">Total</th></tr></thead>
+    <tbody><tr><td>${purchase.seed_name || '-'}</td><td>${purchase.seed_variety || '-'}</td>
+    <td class="text-right">${purchase.quantity_kg || 0}</td><td class="text-right">₹${parseFloat(purchase.price_per_kg || 0).toFixed(2)}</td>
+    <td class="text-right">₹${parseFloat(purchase.total_amount || 0).toFixed(2)}</td></tr>
+    <tr class="total-row"><td colspan="4" class="text-right">Grand Total</td><td class="text-right">₹${parseFloat(purchase.total_amount || 0).toFixed(2)}</td></tr>
+    </tbody></table>
+    <p><strong>Status:</strong> ${(purchase.payment_status || 'pending').toUpperCase()}</p>
+    <div class="footer">AgriFlow Management System — System-generated invoice. No signature required.</div>
+    </div></body></html>`;
     const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `invoice_${purchase.invoice_number || `SP-${purchase.id}`}_${new Date().toISOString().split('T')[0]}.html`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    link.download = `invoice_${purchase.invoice_number || `SP-${purchase.id}`}.html`;
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     toast.success('Invoice downloaded!');
   };
@@ -154,7 +83,7 @@ export default function SeedPurchases() {
       <div className="page-header">
         <div>
           <h1 className="page-title">{t('seed_purchases') || 'Seed Purchases'}</h1>
-          <p className="page-subtitle">{t('seed_purchases_desc') || 'View all seed purchases by farmers and download invoices'}</p>
+          <p className="page-subtitle">{t('seed_purchases_desc') || 'View all seed purchases by farmers'}</p>
         </div>
       </div>
 
@@ -171,7 +100,29 @@ export default function SeedPurchases() {
       </div>
 
       <div className="glass-card overflow-hidden">
-        <div className="table-container">
+        {/* Mobile cards */}
+        <div className="sm:hidden divide-y divide-gray-100">
+          {loading ? <div className="flex justify-center py-10"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>
+            : filtered.length === 0 ? <p className="text-center py-10 text-gray-400 text-sm">No seed purchases found</p>
+            : filtered.map(p => (
+              <div key={p.id} className="p-4 cursor-pointer" onClick={() => setSelectedPurchase(p)}>
+                <div className="flex justify-between items-start mb-1">
+                  <div>
+                    <p className="font-semibold text-gray-800">{p.farmer_name}</p>
+                    <p className="text-xs text-gray-500">{p.seed_name} · {p.quantity_kg} kg</p>
+                  </div>
+                  <span className={`badge ${statusBadge(p.payment_status)}`}>{p.payment_status}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-400">{p.created_at ? new Date(p.created_at).toLocaleDateString('en-IN') : '-'}</span>
+                  <span className="font-bold text-gray-900">₹{parseFloat(p.total_amount || 0).toLocaleString()}</span>
+                </div>
+              </div>
+            ))
+          }
+        </div>
+        {/* Desktop table */}
+        <div className="hidden sm:block table-container">
           <table className="data-table">
             <thead><tr>
               <th>{t('invoice') || 'Invoice'}</th>
@@ -209,17 +160,23 @@ export default function SeedPurchases() {
                   <td className="font-semibold">₹{p.price_per_kg}</td>
                   <td className="font-bold text-gray-900">₹{parseFloat(p.total_amount || 0).toLocaleString()}</td>
                   <td><span className={`badge ${statusBadge(p.payment_status)}`}>{p.payment_status}</span></td>
-                  <td className="text-xs">
-                    {p.created_at ? new Date(p.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
-                  </td>
+                  <td className="text-xs">{p.created_at ? new Date(p.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</td>
                   <td>
-                    <button
-                      onClick={() => downloadInvoice(p)}
-                      className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                      title="Download Invoice"
-                    >
-                      <Download size={14} />
-                    </button>
+                    <div className="flex gap-1">
+                      <button onClick={() => downloadInvoice(p)} className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors" title="Download Invoice">
+                        <Download size={14} />
+                      </button>
+                      {p.payment_status === 'pending' && (
+                        <>
+                          <button onClick={() => handleApproveReject(p.id, 'paid')} disabled={actionLoading === p.id + 'paid'} className="p-1.5 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 disabled:opacity-50" title="Approve">
+                            <CheckCircle size={14} />
+                          </button>
+                          <button onClick={() => handleApproveReject(p.id, 'failed')} disabled={actionLoading === p.id + 'failed'} className="p-1.5 rounded-lg bg-red-100 text-red-500 hover:bg-red-200 disabled:opacity-50" title="Reject">
+                            <XCircle size={14} />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -227,6 +184,38 @@ export default function SeedPurchases() {
           </table>
         </div>
       </div>
+
+      {/* Mobile detail modal */}
+      {selectedPurchase && (
+        <div className="modal-overlay items-start pt-4 sm:items-center sm:pt-0" onClick={() => setSelectedPurchase(null)}>
+          <div className="modal-content max-w-sm w-full mx-3 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="font-bold text-gray-800">Purchase Details</h3>
+              <button onClick={() => setSelectedPurchase(null)} className="btn-icon"><X size={18} /></button>
+            </div>
+            <div className="modal-body space-y-3">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><p className="text-xs text-gray-500">Invoice</p><p className="font-mono font-semibold text-primary-700">{selectedPurchase.invoice_number || `SP-${selectedPurchase.id}`}</p></div>
+                <div><p className="text-xs text-gray-500">Status</p><span className={`badge ${statusBadge(selectedPurchase.payment_status)}`}>{selectedPurchase.payment_status}</span></div>
+                <div><p className="text-xs text-gray-500">Farmer</p><p className="font-semibold">{selectedPurchase.farmer_name}</p></div>
+                <div><p className="text-xs text-gray-500">Phone</p><p>{selectedPurchase.farmer_phone}</p></div>
+                <div><p className="text-xs text-gray-500">Seed</p><p className="font-semibold">{selectedPurchase.seed_name}</p></div>
+                <div><p className="text-xs text-gray-500">Variety</p><p>{selectedPurchase.seed_variety || '-'}</p></div>
+                <div><p className="text-xs text-gray-500">Quantity</p><p>{selectedPurchase.quantity_kg} kg</p></div>
+                <div><p className="text-xs text-gray-500">Price/kg</p><p>₹{selectedPurchase.price_per_kg}</p></div>
+                <div className="col-span-2"><p className="text-xs text-gray-500">Total Amount</p><p className="font-bold text-lg text-gray-900">₹{parseFloat(selectedPurchase.total_amount || 0).toLocaleString()}</p></div>
+                <div className="col-span-2"><p className="text-xs text-gray-500">Date</p><p>{selectedPurchase.created_at ? new Date(selectedPurchase.created_at).toLocaleDateString('en-IN') : '-'}</p></div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button onClick={() => setSelectedPurchase(null)} className="btn-ghost">Close</button>
+              <button onClick={() => { downloadInvoice(selectedPurchase); setSelectedPurchase(null); }} className="btn-primary flex items-center gap-2">
+                <Download size={14} /> Download Invoice
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

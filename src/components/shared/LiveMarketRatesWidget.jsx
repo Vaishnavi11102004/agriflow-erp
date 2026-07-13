@@ -1,17 +1,14 @@
 import React, { useState } from 'react';
 import { TrendingUp, X, ChevronUp, ChevronDown } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import api from '../../services/api/axios';
+import marketService from '../../services/marketService';
 
 export default function LiveMarketRatesWidget() {
   const [isOpen, setIsOpen] = useState(false);
 
   const { data: marketRates = [], isLoading } = useQuery({
     queryKey: ['admin-market-rates-widget'],
-    queryFn: async () => {
-      const res = await api.get('/admin/market-rates');
-      return res.data || [];
-    },
+    queryFn: () => marketService.getRates(),
     refetchInterval: 30000,
   });
 

@@ -144,10 +144,10 @@
 
   /* Modal */
   .modal-overlay {
-    @apply fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4;
+    @apply fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-4 overflow-y-auto;
   }
   .modal-content {
-    @apply bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto mx-4;
+    @apply bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto mx-auto my-auto;
   }
   .modal-header {
     @apply p-6 border-b border-gray-100 flex items-center justify-between;

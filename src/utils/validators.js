@@ -3,11 +3,23 @@
  * Each validator returns an error string or null.
  */
 
+// Strips everything except 0-9 and caps at 10 digits. Used on every mobile
+// number field's onChange/onPaste so invalid characters (letters, spaces,
+// symbols, emoji, +/-, brackets) can never actually land in the input,
+// regardless of whether they arrived via typing, paste, or autofill.
+export function sanitizeMobileInput(raw) {
+  return (raw || '').replace(/[^0-9]/g, '').slice(0, 10);
+}
+
 const validators = {
+  // Single source of truth for mobile number validation — every form in the
+  // app (Register, Admin Create Farmer, Manager Create/Edit, etc.) calls
+  // this same function so the rules and error copy never drift apart.
   phone: (v) => {
-    if (!v) return 'Phone number is required';
-    if (!/^\d+$/.test(v)) return 'Phone number must contain only numbers';
-    if (v.length !== 10) return 'Phone number must be exactly 10 digits';
+    if (!v) return 'Mobile number must contain exactly 10 digits';
+    if (!/^\d+$/.test(v)) return 'Mobile number must contain only numbers';
+    if (v.length !== 10) return 'Mobile number must contain exactly 10 digits';
+    if (v[0] === '0') return 'Mobile number cannot start with 0';
     return null;
   },
 
@@ -21,6 +33,12 @@ const validators = {
 
   email: (v) => {
     if (!v) return null; // optional
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Invalid email address';
+    return null;
+  },
+
+  emailRequired: (v) => {
+    if (!v) return 'Email address is required';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Invalid email address';
     return null;
   },
