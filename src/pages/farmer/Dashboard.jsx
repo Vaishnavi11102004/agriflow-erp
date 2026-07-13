@@ -200,9 +200,9 @@ export default function FarmerDashboard() {
             <h3 className="section-title mb-0"><TrendingUp size={18} className="text-blue-600" />{t('recent_transactions')}</h3>
             <Link to="/farmer/transactions" className="text-primary-600 text-xs font-semibold hover:underline flex items-center gap-1">{t('view_all')} <ArrowRight size={12} /></Link>
           </div>
-          {data?.recentTx?.length === 0
+          {(data?.recentTx || data?.recentTransactions || data?.transactions || [])?.length === 0
             ? <p className="text-gray-400 text-sm text-center py-4">{t('no_transactions_yet')}</p>
-            : data?.recentTx?.map(tx => (
+            : (data?.recentTx || data?.recentTransactions || data?.transactions || [])?.slice(0, 5).map(tx => (
               <div key={tx.id} className="flex items-center gap-3 py-3 border-b last:border-0">
                 <div className={`w-9 h-9 shrink-0 rounded-xl flex items-center justify-center text-lg ${tx.direction === 'credit' ? 'bg-green-100' : 'bg-red-100'}`}>
                   {tx.direction === 'credit' ? '↑' : '↓'}

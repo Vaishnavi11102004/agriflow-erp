@@ -268,7 +268,28 @@ export default function Reports() {
           </button>
         </div>
 
-        <div className="table-container max-h-96 overflow-y-auto">
+        {/* Mobile cards */}
+        <div className="sm:hidden divide-y divide-gray-100 max-h-96 overflow-y-auto">
+          {reportConfig.rows.length === 0 ? (
+            <p className="text-center py-10 text-gray-400 text-sm">No records found for this selection.</p>
+          ) : (
+            reportConfig.rows.slice(0, 50).map((row, i) => (
+              <div key={i} className="p-4 space-y-2">
+                {row.map((cell, j) => (
+                  <div key={j} className="flex justify-between items-start gap-4">
+                    <span className="text-xs text-gray-400 font-medium whitespace-nowrap">{reportConfig.columns[j]}</span>
+                    <span className="text-sm font-semibold text-gray-800 text-right break-all">{cell}</span>
+                  </div>
+                ))}
+              </div>
+            ))
+          )}
+          {reportConfig.rows.length > 50 && (
+            <p className="text-center text-xs text-gray-400 py-3 border-t border-gray-100">Showing first 50 of {reportConfig.rows.length}</p>
+          )}
+        </div>
+        {/* Desktop table */}
+        <div className="hidden sm:block table-container max-h-96 overflow-y-auto">
           <table className="data-table">
             <thead><tr>{reportConfig.columns.map(c => <th key={c}>{c}</th>)}</tr></thead>
             <tbody>
