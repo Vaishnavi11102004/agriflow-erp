@@ -4,7 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { Leaf, TrendingUp, BarChart3, ArrowRight, ChevronRight, Menu, X, Globe } from 'lucide-react';
-import api from '../../services/api/axios';
+import marketService from '../../services/marketService';
+import { CACHE_TIMES } from '../../lib/queryConfig';
 
 const LANGUAGES = [
   { code: 'en', label: 'English', flag: '🇬🇧' },
@@ -25,10 +26,8 @@ export default function MarketRatesPage() {
 
   const { data: marketRates = [], isLoading: loading } = useQuery({
     queryKey: ['public-market-rates'],
-    queryFn: async () => {
-      const res = await api.get('/public/market-rates');
-      return res.data;
-    }
+    queryFn: () => marketService.getRates(),
+    ...CACHE_TIMES.LONG
   });
 
   const changeLang = (code) => {

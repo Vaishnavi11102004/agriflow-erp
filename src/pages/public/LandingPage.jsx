@@ -8,7 +8,9 @@ import {
   Users, Sprout, BarChart3, ChevronRight, Phone, Menu, X,
   Shield, Clock, Award, Wheat, Package, BadgeCheck, Globe
 } from 'lucide-react';
-import api from '../../services/api/axios';
+import publicService from '../../services/publicService';
+import marketService from '../../services/marketService';
+import { CACHE_TIMES } from '../../lib/queryConfig';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -65,26 +67,20 @@ export default function LandingPage() {
 
   const { data: stats = { farmers: 0, crops: 0, seeds: 0, warehouses: 0 } } = useQuery({
     queryKey: ['public-stats'],
-    queryFn: async () => {
-      const res = await api.get('/public/stats');
-      return res.data;
-    }
+    queryFn: () => publicService.getStats(),
+    ...CACHE_TIMES.LONG
   });
 
   const { data: marketRates = [], isLoading: ratesLoading } = useQuery({
     queryKey: ['public-market-rates'],
-    queryFn: async () => {
-      const res = await api.get('/public/market-rates');
-      return res.data;
-    }
+    queryFn: () => marketService.getRates(),
+    ...CACHE_TIMES.LONG
   });
 
   const { data: seeds = [], isLoading: seedsLoading } = useQuery({
     queryKey: ['public-seeds'],
-    queryFn: async () => {
-      const res = await api.get('/public/seeds');
-      return res.data;
-    }
+    queryFn: () => publicService.getSeeds(),
+    ...CACHE_TIMES.LONG
   });
 
   const changeLang = (code) => {
@@ -95,7 +91,12 @@ export default function LandingPage() {
 
   const handleActionClick = (action) => {
     if (user) {
-      navigate(user.role === 'farmer' ? '/farmer' : '/manager/dashboard');
+      if (user.role === 'farmer') {
+        if (action === 'buy') return navigate('/farmer/seeds');
+        if (action === 'sell') return navigate('/farmer/grain-sales');
+        return navigate('/farmer');
+      }
+      navigate('/manager/dashboard');
     } else {
       navigate('/get-started', { state: { from: action } });
     }
@@ -185,16 +186,12 @@ export default function LandingPage() {
                   </div>
                 )}
               </div>
-              {user ? (
-                <button onClick={() => handleActionClick('dashboard')}
-                  className="flex items-center gap-2 bg-primary-600 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-primary-700 transition-all active:scale-95">
-                  {t('go_to_dashboard')} <ArrowRight size={15} />
-                </button>
-              ) : (
-                <Link to="/get-started" className="flex items-center gap-1.5 bg-primary-600 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-primary-700 transition-all active:scale-95 shadow-md shadow-primary-200">
-                  {t('login')} <ArrowRight size={15} />
-                </Link>
-              )}
+              {/* Landing page always behaves as a public page: it never reveals
+                  auth state here, even if a valid Supabase session exists —
+                  only Logout (in the actual dashboards) ends the session. */}
+              <Link to="/get-started" className="flex items-center gap-1.5 bg-primary-600 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-primary-700 transition-all active:scale-95 shadow-md shadow-primary-200">
+                {t('login')} <ArrowRight size={15} />
+              </Link>
             </div>
 
             {/* Mobile menu toggle */}
@@ -221,7 +218,7 @@ export default function LandingPage() {
               </button>
             ))}
             <div className="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100">
-              <Link to="/get-started" className="flex-1 text-center py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold">{t('login')}</Link>
+              <Link to="/get-started" onClick={() => setMobileMenuOpen(false)} className="flex-1 text-center py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold">{t('login')}</Link>
             </div>
             {/* Language switcher in mobile */}
             <div className="flex gap-2 pt-1">
@@ -451,7 +448,7 @@ export default function LandingPage() {
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
                 {filteredSeeds.map((seed) => {
                   const cropName = seed.name?.split(' ')[1] || seed.name?.split(' ')[0] || 'default';
-                  const photoUrl = GRAIN_PHOTOS[cropName] || GRAIN_PHOTOS.default;
+                  const photoUrl = seed.image_url || GRAIN_PHOTOS[cropName] || GRAIN_PHOTOS.default;
                   return (
                     <div key={seed.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all hover:-translate-y-1 overflow-hidden group flex flex-col">
                       <div className="h-32 bg-gray-100 overflow-hidden relative flex-shrink-0">
@@ -637,9 +634,9 @@ export default function LandingPage() {
 
 
       {/* ── FOOTER ── */}
-      <footer className="bg-gray-900 text-white py-10">
+      <footer className="bg-gray-900 text-white pt-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
                 <Leaf size={16} className="text-white" />
@@ -655,6 +652,27 @@ export default function LandingPage() {
               <p className="text-gray-500 text-xs">{t('footer_copyright')}</p>
               <p className="text-gray-500 text-xs font-semibold">Powered by VPD Technologies</p>
             </div>
+          </div>
+
+          {/* Sri Siva Sai Seeds Address */}
+          <div className="border-t border-white/10 py-6 flex justify-center">
+            <a
+              href="https://maps.app.goo.gl/SriSivaSaiSeeds"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-4 py-3 transition-colors group"
+            >
+              <span className="w-8 h-8 bg-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-400">
+                  <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                  <circle cx="12" cy="10" r="3"/>
+                </svg>
+              </span>
+              <div>
+                <p className="text-white text-xs font-semibold">Sri Siva Sai Seeds</p>
+                <p className="text-gray-400 text-xs">View on Google Maps ↗</p>
+              </div>
+            </a>
           </div>
         </div>
       </footer>

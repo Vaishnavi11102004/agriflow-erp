@@ -254,6 +254,7 @@ export default function FarmersDirectory() {
                       </div>
                       <h4 className="font-bold text-gray-900">{detail.farmer.name}</h4>
                       <p className="text-gray-500 text-sm">{detail.farmer.phone}</p>
+                      {detail.farmer.email && <p className="text-gray-400 text-xs">{detail.farmer.email}</p>}
                       <span className={`badge ${statusBadge(detail.farmer.status)} mt-1`}>{t(detail.farmer.status)}</span>
                     </div>
                     {detail.farmer.status === 'pending' && (
@@ -269,10 +270,12 @@ export default function FarmersDirectory() {
                     )}
                     <div className="space-y-2 text-sm">
                       {[
+                        [t('email') || 'Email', detail.farmer.email],
                         [t('address'), detail.farmer.address],
                         [t('acres'), detail.farmer.acres_of_land],
                         [t('farm_location'), detail.farmer.crop_address],
                         [t('bank_status'), detail.farmer.bank_status],
+                        ['Registered On', detail.farmer.created_at ? new Date(detail.farmer.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : null],
                       ].map(([k, v]) => v && (
                         <div key={k} className="flex justify-between py-1.5 border-b border-gray-50">
                           <span className="text-gray-400 text-xs">{k}</span>

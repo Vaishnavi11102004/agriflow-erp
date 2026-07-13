@@ -51,12 +51,24 @@ serve(async (req) => {
 
     if (action === 'getVisits') {
       const { adminId, role } = payload;
-      let query = supabase.from('farm_visits').select(`*, farmer:users!farm_visits_farmer_id_fkey(name, phone), manager:users!farm_visits_admin_id_fkey(name, phone), crop:crops(crop_type, sowing_date, notes), farmer_profile:farmer_profiles!farm_visits_farmer_id_fkey(crop_address)`);
+      // Note: no direct FK exists between farm_visits and farmer_profiles (the
+      // farm_visits_farmer_id_fkey constraint points at users, not
+      // farmer_profiles), so crop_address must be fetched separately and
+      // merged — embedding it directly errors with "Could not find a
+      // relationship between 'farm_visits' and 'farmer_profiles'", which
+      // aborted this whole query and made every newly scheduled visit
+      // (and the entire list) fail to load.
+      let query = supabase.from('farm_visits').select(`*, farmer:users!farm_visits_farmer_id_fkey(name, phone), manager:users!farm_visits_admin_id_fkey(name, phone), crop:crops(crop_type, sowing_date, notes)`);
       if (role === 'manager') query = query.eq('admin_id', adminId);
       const { data, error } = await query.order('scheduled_date', { ascending: true }).order('created_at', { ascending: false });
       if (error) throw error;
+
+      const farmerIds = [...new Set(data.map((fv: any) => fv.farmer_id).filter(Boolean))];
+      const { data: farmerProfiles } = await supabase.from('farmer_profiles').select('user_id, crop_address').in('user_id', farmerIds);
+      const profileMap = new Map((farmerProfiles || []).map((p: any) => [p.user_id, p]));
+
       const result = data.map((fv: any) => ({
-        ...fv, farmer_name: fv.farmer?.name, farmer_phone: fv.farmer?.phone, manager_name: fv.manager?.name, manager_phone: fv.manager?.phone, crop_type: fv.crop?.crop_type, sowing_date: fv.crop?.sowing_date, description: fv.crop?.notes, crop_address: fv.farmer_profile?.crop_address
+        ...fv, farmer_name: fv.farmer?.name, farmer_phone: fv.farmer?.phone, manager_name: fv.manager?.name, manager_phone: fv.manager?.phone, crop_type: fv.crop?.crop_type, sowing_date: fv.crop?.sowing_date, description: fv.crop?.notes, crop_address: profileMap.get(fv.farmer_id)?.crop_address
       }));
       return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -154,9 +166,22 @@ serve(async (req) => {
     }
 
     if (action === 'getGrainSales') {
-      const { data, error } = await supabase.from('grain_sales').select('*, farmer:users(name, phone), farmer_profile:farmer_profiles!grain_sales_farmer_id_fkey(bank_name, account_number, ifsc_code, upi_id)').order('created_at', { ascending: false });
+      // Same pitfall as getVisits: grain_sales_farmer_id_fkey points at users,
+      // not farmer_profiles, so embedding farmer_profiles through it errors
+      // with "Could not find a relationship between 'grain_sales' and
+      // 'farmer_profiles'" and aborts the whole query — this is why the Grain
+      // Sales Log appeared empty (every request 500'd).
+      const { data, error } = await supabase.from('grain_sales').select('*, farmer:users(name, phone)').order('created_at', { ascending: false });
       if (error) throw error;
-      const result = data.map((gs: any) => ({ ...gs, farmer_name: gs.farmer?.name, farmer_phone: gs.farmer?.phone, bank_name: gs.farmer_profile?.bank_name, account_number: gs.farmer_profile?.account_number, ifsc_code: gs.farmer_profile?.ifsc_code, upi_id: gs.farmer_profile?.upi_id }));
+
+      const farmerIds = [...new Set(data.map((gs: any) => gs.farmer_id).filter(Boolean))];
+      const { data: farmerProfiles } = await supabase.from('farmer_profiles').select('user_id, bank_name, account_number, ifsc_code, upi_id').in('user_id', farmerIds);
+      const profileMap = new Map((farmerProfiles || []).map((p: any) => [p.user_id, p]));
+
+      const result = data.map((gs: any) => {
+        const fp = profileMap.get(gs.farmer_id);
+        return { ...gs, farmer_name: gs.farmer?.name, farmer_phone: gs.farmer?.phone, bank_name: fp?.bank_name, account_number: fp?.account_number, ifsc_code: fp?.ifsc_code, upi_id: fp?.upi_id };
+      });
       return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 

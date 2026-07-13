@@ -2,14 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
+import { useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, Sprout, ShoppingCart, Calendar,
   History, User, LogOut, Menu, X, Globe,
-  Bot, Leaf
+  Bot, Leaf, Wheat
 } from 'lucide-react';
-import api from '../services/api/axios';
+import farmerService from '../services/farmerService';
 import toast from 'react-hot-toast';
 import NotificationCenter from '../components/shared/NotificationCenter';
+import { CACHE_TIMES } from '../lib/queryConfig';
 
 const LANGUAGES = [
   { code: 'en', label: 'English', flag: '🇬🇧' },
@@ -33,23 +35,26 @@ export default function FarmerLayout() {
   const [chatHistory, setChatHistory] = useState([
     { from: 'bot', text: 'Hello! I can help you with current crop prices and market forecasts. Ask me anything!' }
   ]);
-  const [marketRates, setMarketRates] = useState([]);
+  // Same queryKey + fetcher as GrainSales.jsx's market rates query, so both
+  // share one cached fetch instead of each triggering its own request.
+  const { data: marketRates = [] } = useQuery({
+    queryKey: ['farmer-market-rates'],
+    queryFn: () => farmerService.getMarketRates(),
+    ...CACHE_TIMES.LONG
+  });
 
   const navItems = [
-    { to: '/farmer', icon: <LayoutDashboard size={18} />, label: t('farm_overview'), end: true },
+    { to: '/farmer/profile', icon: <LayoutDashboard size={18} />, label: 'Account Details', end: false },
     { to: '/farmer/crops', icon: <Sprout size={18} />, label: t('crops_cycles') },
     { to: '/farmer/seeds', icon: <ShoppingCart size={18} />, label: t('seed_purchase') },
     { to: '/farmer/booking-slots', icon: <Calendar size={18} />, label: t('booking_slot') },
+    { to: '/farmer/grain-sales', icon: <Wheat size={18} />, label: t('grain_sales') },
     { to: '/farmer/transactions', icon: <History size={18} />, label: t('transaction_history') },
   ];
 
   useEffect(() => {
     localStorage.setItem('sidebar_open', sidebarOpen);
   }, [sidebarOpen]);
-
-  useEffect(() => {
-    api.get('/farmer/market-rates').then(r => setMarketRates(r.data)).catch(() => {});
-  }, []);
 
   // Auto-close sidebar on mobile when navigating
   useEffect(() => {
@@ -92,6 +97,8 @@ export default function FarmerLayout() {
     }
     setTimeout(() => setChatHistory(h => [...h, { from: 'bot', text: response }]), 500);
   };
+
+  const currentPage = navItems.find(item => location.pathname.startsWith(item.to))?.label || t('farm_overview');
 
   return (
     <div className="flex h-screen overflow-hidden agro-bg">
@@ -174,7 +181,7 @@ export default function FarmerLayout() {
           </div>
 
           <h2 className="text-gray-700 font-semibold text-base flex-1 min-w-0 hidden sm:block truncate">
-            {t('app_name')} — {t('farm_overview')}
+            {t('app_name')} — {currentPage}
           </h2>
 
           <div className="flex items-center gap-2 ml-auto flex-shrink-0">
@@ -230,8 +237,9 @@ export default function FarmerLayout() {
         ))}
       </nav>
 
-      {/* Chatbot */}
-      <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40">
+      {/* Chatbot — bottom-20 on mobile clears the fixed bottom nav (h-16 + safe
+          area) below it; sm:bottom-6 on desktop, where there's no bottom nav. */}
+      <div className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40">
         {chatOpen && (
           <div className="mb-3 bg-white rounded-2xl shadow-2xl border border-gray-200 w-72 sm:w-80 flex flex-col overflow-hidden animate-fade-in">
             <div className="bg-agro-green text-white p-4 flex items-center justify-between">

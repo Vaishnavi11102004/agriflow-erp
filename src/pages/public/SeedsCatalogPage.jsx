@@ -4,7 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { Leaf, ShoppingBag, Sprout, ArrowRight, Menu, X, Globe } from 'lucide-react';
-import api from '../../services/api/axios';
+import publicService from '../../services/publicService';
+import { CACHE_TIMES } from '../../lib/queryConfig';
 
 const LANGUAGES = [
   { code: 'en', label: 'English', flag: '🇬🇧' },
@@ -33,10 +34,8 @@ export default function SeedsCatalogPage() {
 
   const { data: seeds = [], isLoading: loading } = useQuery({
     queryKey: ['public-seeds'],
-    queryFn: async () => {
-      const res = await api.get('/public/seeds');
-      return res.data;
-    }
+    queryFn: () => publicService.getSeeds(),
+    ...CACHE_TIMES.LONG
   });
 
   const changeLang = (code) => {

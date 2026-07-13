@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import api from '../../services/api/axios';
+import farmerService from '../../services/farmerService';
 import { useAuth } from '../../context/AuthContext';
+import { CACHE_TIMES } from '../../lib/queryConfig';
 import { Sprout, IndianRupee, ShoppingBag, Calendar, TrendingUp, ArrowRight, MapPin, Bell, AlertTriangle } from 'lucide-react';
 
 function getDaysUntil(dateStr) {
@@ -33,11 +34,10 @@ export default function FarmerDashboard() {
   const { user } = useAuth();
 
   const { data, isLoading: loading } = useQuery({
-    queryKey: ['farmer-dashboard'],
-    queryFn: async () => {
-      const res = await api.get('/farmer/dashboard');
-      return res.data;
-    }
+    queryKey: ['farmer-dashboard', user?.id],
+    queryFn: () => farmerService.getDashboard(user.id),
+    enabled: !!user?.id,
+    ...CACHE_TIMES.SHORT
   });
 
   if (loading) return (

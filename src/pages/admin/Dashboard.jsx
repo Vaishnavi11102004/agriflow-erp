@@ -1,7 +1,9 @@
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import api from '../../services/api/axios';
+import adminService from '../../services/adminService';
+import ledgerService from '../../services/ledgerService';
+import { CACHE_TIMES } from '../../lib/queryConfig';
 
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Users, Sprout, IndianRupee, Warehouse, Clock, TrendingUp, AlertCircle } from 'lucide-react';
@@ -31,15 +33,13 @@ export default function AdminDashboard() {
 
   const { data, isLoading: loading } = useQuery({
     queryKey: ['admin-dashboard'],
-    queryFn: async () => {
-      const res = await api.get('/admin/dashboard');
-      return res.data;
-    }
+    queryFn: () => adminService.getDashboard(),
+    ...CACHE_TIMES.SHORT
   });
 
   const handlePayFarmer = async (txId) => {
     try {
-      await api.patch(`/admin/transactions/${txId}/pay`);
+      await ledgerService.processPayment(txId, user?.id);
       toast.success(t('payment_processed_successfully'));
       queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
     } catch (err) {
@@ -68,8 +68,8 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-8">
         <StatCard icon={<Users size={22} />} value={data?.totalFarmers || 0} label={t("total_farmers")} color="bg-blue-500" sub={`${data?.activeFarmers || 0}  ${t("active_farmers")}`} />
         <StatCard icon={<Sprout size={22} />} value={data?.activeCrops || 0} label={t("active_crop_cycles")} color="bg-agro-primary" />
-        <StatCard icon={<TrendingUp size={22} />} value={`${((data?.procurementMTD || 0)/1000).toFixed(1)}T`} label={t("procurement_mtd")} color="bg-agro-brown" />
-        <StatCard icon={<Warehouse size={22} />} value={`${((data?.warehouseInv || 0)/1000).toFixed(1)}T`} label={t("warehouse_inv")} color="bg-gray-600" />
+        <StatCard icon={<TrendingUp size={22} />} value={`${((data?.procurementMTD || 0)/100).toFixed(1)} Qtl`} label={t("procurement_mtd")} color="bg-agro-brown" />
+        <StatCard icon={<Warehouse size={22} />} value={`${((data?.warehouseInv || 0)/100).toFixed(1)} Qtl`} label={t("warehouse_inv")} color="bg-gray-600" />
         {isSuperAdmin && (
           <>
             <StatCard icon={<IndianRupee size={22} />} value={`₹${((data?.revenueMTD || 0)/1000).toFixed(0)}K`} label={t("total_revenue_mtd")} color="bg-agro-gold" />
@@ -120,14 +120,14 @@ export default function AdminDashboard() {
                 <p className="text-xs text-gray-400">{t("used")}</p>
               </div>
             </div>
-            <p className="text-sm text-gray-500 mt-3">{(usedWh / 1000).toFixed(0)}T / {(totalWh / 1000).toFixed(0)}T</p>
+            <p className="text-sm text-gray-500 mt-3">{(usedWh / 100).toFixed(0)} Qtl / {(totalWh / 100).toFixed(0)} Qtl</p>
           </div>
           <div className="space-y-2 mt-2">
             {data?.warehouses?.map(w => {
               const pct = (w.current_load_kg / w.total_capacity_kg * 100);
               return (
                 <div key={w.id}>
-                  <div className="flex justify-between text-xs mb-1"><span className="text-gray-600">{w.name}</span><span className="font-medium">{pct.toFixed(0)}%</span></div>
+                  <div className="flex justify-between text-xs mb-1"><span className="text-gray-600">{w.name}</span><span className="font-medium" title={`Used: ${(w.current_load_kg/100).toFixed(1)} Qtl / Total: ${(w.total_capacity_kg/100).toFixed(1)} Qtl`}>{pct.toFixed(0)}% used</span></div>
                   <div className="warehouse-bar"><div className={pct > 80 ? 'warehouse-fill-red' : pct > 60 ? 'warehouse-fill-yellow' : 'warehouse-fill-green'} style={{ width: `${pct}%` }} /></div>
                 </div>
               );
