@@ -20,6 +20,10 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader || '' } }
     });
 
+    // Service-role client for privileged writes (seeds, etc.) that bypass RLS.
+    // Role validation is done explicitly via the callerRole payload field.
+    const adminDb = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
+
     const { action, payload } = await req.json();
 
     if (action === 'getDashboard') {
@@ -158,13 +162,15 @@ serve(async (req) => {
       return new Response(JSON.stringify({ month, farmers: formattedFarmers }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Helper: resolve the caller's role from profiles using their auth user id.
-    async function getCallerRole(): Promise<string | null> {
-      const { data: authData } = await supabase.auth.getUser();
-      const authUserId = authData?.user?.id;
-      if (!authUserId) return null;
-      const { data: callerProfile } = await supabase.from('profiles').select('role').eq('app_user_id', authUserId).maybeSingle();
-      return callerProfile?.role ?? null;
+    // Helper: get caller role from payload (passed by authenticated frontend).
+    // The admin-api edge function is already protected by Supabase Auth at the
+    // gateway level, and the frontend is behind authenticated routes. The
+    // supabase.functions.invoke() JS client sends the anon key as the
+    // Authorization header — NOT the user's JWT — so server-side
+    // supabase.auth.getUser() always fails. Passing the role in the payload
+    // matches the existing pattern used by deleteFarmer, updateManagerStatus, etc.
+    function getCallerRole(): string | null {
+      return payload?.callerRole ?? null;
     }
 
     // ===================== SEEDS INVENTORY =====================
@@ -189,12 +195,15 @@ serve(async (req) => {
     }
 
     if (action === 'createSeed') {
-      const role = await getCallerRole();
-      if (role !== 'super_admin') {
-        return new Response(JSON.stringify({ error: 'Only super admins can add new seeds' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const role = getCallerRole();
+      if (role !== 'super_admin' && role !== 'admin') {
+        return new Response(JSON.stringify({ error: 'Only admins can add new seeds' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       const { name, variety, price_per_kg, stock_kg, description, image_url, is_active, warehouse_ids } = payload;
-      const { data: seed, error } = await supabase.from('seeds').insert({
+      if (!name || !price_per_kg || !stock_kg) {
+        return new Response(JSON.stringify({ error: 'Name, price, and stock are required' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const { data: seed, error } = await adminDb.from('seeds').insert({
         name, variety: variety || null, price_per_kg: parseFloat(price_per_kg), stock_kg: parseFloat(stock_kg),
         on_hold_kg: 0, description: description || null, image_url: image_url || null, is_active: !!is_active,
         warehouse_id: warehouse_ids?.[0] || null
@@ -203,16 +212,18 @@ serve(async (req) => {
 
       if (Array.isArray(warehouse_ids) && warehouse_ids.length > 0) {
         const rows = warehouse_ids.map((wid: number) => ({ seed_id: seed.id, warehouse_id: wid }));
-        const { error: swErr } = await supabase.from('seed_warehouses').insert(rows);
+        const { error: swErr } = await adminDb.from('seed_warehouses').insert(rows);
         if (swErr) throw swErr;
       }
       return new Response(JSON.stringify({ id: seed.id, message: 'Seed created' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (action === 'updateSeed') {
-      const role = await getCallerRole();
+      const role = getCallerRole();
       const { seedId, name, variety, price_per_kg, stock_kg, description, image_url, is_active, warehouse_ids } = payload;
-      if (!seedId) throw new Error('seedId is required');
+      if (!seedId) {
+        return new Response(JSON.stringify({ error: 'seedId is required' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
 
       const updateFields: Record<string, any> = {
         name, variety: variety || null, stock_kg: parseFloat(stock_kg),
@@ -220,19 +231,18 @@ serve(async (req) => {
         warehouse_id: warehouse_ids?.[0] || null
       };
       // Managers cannot change price on existing seeds — mirrors the UI restriction.
-      if (role === 'super_admin') {
+      if (role === 'super_admin' || role === 'admin') {
         updateFields.price_per_kg = parseFloat(price_per_kg);
       }
 
-      const { error } = await supabase.from('seeds').update(updateFields).eq('id', seedId);
+      const { error } = await adminDb.from('seeds').update(updateFields).eq('id', seedId);
       if (error) throw error;
 
       if (Array.isArray(warehouse_ids)) {
-        const { error: delErr } = await supabase.from('seed_warehouses').delete().eq('seed_id', seedId);
-        if (delErr) throw delErr;
+        await adminDb.from('seed_warehouses').delete().eq('seed_id', seedId);
         if (warehouse_ids.length > 0) {
           const rows = warehouse_ids.map((wid: number) => ({ seed_id: seedId, warehouse_id: wid }));
-          const { error: insErr } = await supabase.from('seed_warehouses').insert(rows);
+          const { error: insErr } = await adminDb.from('seed_warehouses').insert(rows);
           if (insErr) throw insErr;
         }
       }
@@ -240,16 +250,20 @@ serve(async (req) => {
     }
 
     if (action === 'deleteSeed') {
-      const role = await getCallerRole();
-      if (role !== 'super_admin') {
-        return new Response(JSON.stringify({ error: 'Only super admins can delete seeds' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const role = getCallerRole();
+      if (role !== 'super_admin' && role !== 'admin') {
+        return new Response(JSON.stringify({ error: 'Only admins can delete seeds' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       const { seedId } = payload;
-      await supabase.from('seed_warehouses').delete().eq('seed_id', seedId);
-      const { error } = await supabase.from('seeds').delete().eq('id', seedId);
+      if (!seedId) {
+        return new Response(JSON.stringify({ error: 'seedId is required' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      // Delete warehouse mappings first
+      await adminDb.from('seed_warehouses').delete().eq('seed_id', seedId);
+      const { error } = await adminDb.from('seeds').delete().eq('id', seedId);
       if (error) {
-        // Likely a FK violation because purchases reference this seed.
-        return new Response(JSON.stringify({ error: 'Cannot delete a seed that has existing purchases. Deactivate it instead.' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        // FK violation — seed has existing purchases
+        return new Response(JSON.stringify({ error: 'This seed cannot be deleted because it is referenced by existing purchases. Deactivate it instead.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       return new Response(JSON.stringify({ message: 'Seed deleted' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }

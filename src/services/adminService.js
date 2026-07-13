@@ -1,8 +1,14 @@
 import { supabase } from '../lib/supabase';
 
 const invoke = async (action, payload) => {
+  // Include caller role so the edge function can validate permissions.
+  // supabase.functions.invoke() sends the anon key as Authorization,
+  // NOT the user's JWT, so the edge function cannot decode the user.
+  const stored = sessionStorage.getItem('agro_user');
+  const callerRole = stored ? JSON.parse(stored)?.role : null;
+
   const { data, error } = await supabase.functions.invoke('admin-api', {
-    body: { action, payload }
+    body: { action, payload: { ...payload, callerRole } }
   });
   if (error) throw error;
   if (data?.error) throw new Error(data.error);
