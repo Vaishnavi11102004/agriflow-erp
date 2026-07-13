@@ -75,8 +75,14 @@ serve(async (req) => {
 
     const { name, email, phone, password, role, address, acres_of_land, crop_address, department } = body;
 
-    if (!name || !phone || !password || !role) {
+    // Email is required — login is email+password only, so an account created
+    // without one could never sign in.
+    if (!name || !phone || !email || !password || !role) {
       return new Response(JSON.stringify({ error: 'Missing required parameters' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return new Response(JSON.stringify({ error: 'Invalid email address' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (!['farmer', 'manager'].includes(role)) {
@@ -88,15 +94,25 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Forbidden: Only super admin can create managers' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Check duplicate phone in database profiles
-    const { data: existingUser } = await supabase
+    // Check duplicate phone/email in database profiles
+    const { data: existingPhone } = await supabase
       .from('profiles')
       .select('id')
       .eq('phone', phone)
       .maybeSingle();
 
-    if (existingUser) {
+    if (existingPhone) {
       return new Response(JSON.stringify({ error: 'Phone number already registered' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const { data: existingEmail } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (existingEmail) {
+      return new Response(JSON.stringify({ error: 'Email address already registered' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Create user in Supabase Auth via Admin client

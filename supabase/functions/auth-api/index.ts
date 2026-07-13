@@ -210,7 +210,35 @@ serve(async (req) => {
         return jsonResponse({ success: false, error: 'authUserId is required' }, 400);
       }
 
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return jsonResponse({ success: false, error: 'A valid email address is required' }, 400);
+      }
+
       console.log('registerDatabaseUser: Registering for auth user:', authUserId);
+
+      // Uniqueness checks (excluding this same auth user's own placeholder row,
+      // created by the auth.users trigger before this action runs).
+      if (phone) {
+        const { data: dupPhone } = await supabaseAdmin
+          .from('profiles')
+          .select('id')
+          .eq('phone', phone)
+          .neq('id', authUserId)
+          .maybeSingle();
+        if (dupPhone) {
+          return jsonResponse({ success: false, error: 'Phone number already registered' }, 409);
+        }
+      }
+
+      const { data: dupEmail } = await supabaseAdmin
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .neq('id', authUserId)
+        .maybeSingle();
+      if (dupEmail) {
+        return jsonResponse({ success: false, error: 'Email address already registered' }, 409);
+      }
 
       // Check if the trigger has already created a profile
       const { data: existingProfile } = await supabaseAdmin

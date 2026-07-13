@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
-import { Leaf, Shield, Crown, Eye, EyeOff, Phone, Lock, ArrowRight, ArrowLeft, AlertTriangle } from 'lucide-react';
-import api from '../../services/api/axios';
+import { Leaf, Shield, Crown, Eye, EyeOff, Phone, Lock, ArrowRight, ArrowLeft, AlertTriangle, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
+import authService from '../../services/authService';
 import validators from '../../utils/validators';
 import FieldError from '../../components/shared/FieldError';
 
@@ -14,12 +14,18 @@ const LANGUAGES = [
   { code: 'hi', label: 'हिंदी' },
 ];
 
+const DEMO_ACCOUNTS = [
+  { label: 'Demo Super Admin', email: 'superadmin@agroseq.com', password: 'Admin@123', bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-800' },
+  { label: 'Demo Manager', email: 'manager@agroseq.com', password: 'Manager@123', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-800' },
+  { label: 'Demo Farmer', email: 'farmer@agroseq.com', password: 'Farmer@123', bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-800' },
+];
+
 export default function Login() {
   const { t, i18n } = useTranslation();
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -28,7 +34,7 @@ export default function Login() {
 
   const validateField = (field, value) => {
     let error = null;
-    if (field === 'phone') error = validators.phone(value);
+    if (field === 'email') error = validators.emailRequired(value);
     if (field === 'password') error = value ? null : 'Password is required';
     if (field === 'newPwd') error = validators.password(value);
     if (field === 'confirmPwd') error = value && value !== newPwd ? 'Passwords do not match' : null;
@@ -44,13 +50,13 @@ export default function Login() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (!phone || !password) return toast.error(t('please_fill_all_fields'));
+    if (!email || !password) return toast.error(t('please_fill_all_fields'));
     setLoading(true);
     try {
-      const data = await login(phone, password);
+      const data = await login(email, password);
       if (data.requirePasswordChange) {
         setForceChange(true);
-        setTempPhone(phone);
+        setTempPhone(data.user.phone);
         setOldPwd(password);
         toast('Please change your default password to continue.', { icon: '🔐' });
       } else {
@@ -58,7 +64,7 @@ export default function Login() {
         redirectUser(data.user.role);
       }
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Login failed');
+      toast.error(err.message || 'Login failed');
     } finally { setLoading(false); }
   };
 
@@ -81,16 +87,22 @@ export default function Login() {
     if (newPwd.length < 8) return toast.error('Password must be at least 8 characters');
     setLoading(true);
     try {
-      await api.post('/auth/change-password', { phone: tempPhone, old_password: oldPwd, new_password: newPwd });
+      await authService.changePassword(tempPhone, oldPwd, newPwd);
       toast.success('Password changed! Please login again.');
       setForceChange(false);
       setPassword('');
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to change password');
+      toast.error(err.message || 'Failed to change password');
     } finally { setLoading(false); }
   };
 
   const changeLang = (code) => { i18n.changeLanguage(code); localStorage.setItem('agro_lang', code); };
+
+  const fillDemo = (acc) => {
+    setEmail(acc.email);
+    setPassword(acc.password);
+    setFieldErrors({});
+  };
 
   if (forceChange) return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-primary-900 via-primary-800 to-primary-950">
@@ -192,16 +204,15 @@ export default function Login() {
 
             <form onSubmit={handleLogin} className="space-y-5">
               <div>
-                <label className="label block text-sm font-medium text-gray-700 mb-1">{t('mobile_number')}</label>
+                <label className="label block text-sm font-medium text-gray-700 mb-1">Email Address</label>
                 <div className="relative">
-                  <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
-                    onBlur={() => validateField('phone', phone)}
-                    placeholder={t('mobile_placeholder') || 'Enter mobile number'} 
-                    className={`w-full pl-10 pr-4 py-3 bg-gray-50 border ${fieldErrors.phone ? 'border-red-400 ring-1 ring-red-200' : 'border-gray-200'} rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all`}
-                    maxLength={10} inputMode="numeric" />
+                  <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                    onBlur={() => validateField('email', email)}
+                    placeholder="Enter email address" 
+                    className={`w-full pl-10 pr-4 py-3 bg-gray-50 border ${fieldErrors.email ? 'border-red-400 ring-1 ring-red-200' : 'border-gray-200'} rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all`} />
                 </div>
-                <FieldError error={fieldErrors.phone} />
+                <FieldError error={fieldErrors.email} />
               </div>
               <div>
                 <label className="label block text-sm font-medium text-gray-700 mb-1">{t('password')}</label>
@@ -237,14 +248,19 @@ export default function Login() {
             </form>
 
             <div className="mt-6 text-center">
-              <div className="mt-6 space-y-2">
-
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-left">
-                  <p className="text-blue-800 text-xs font-medium">Demo Manager: phone=8888888888, pwd=Manager@123</p>
-                </div>
-                <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl text-left">
-                  <p className="text-purple-800 text-xs font-medium">Demo Admin: phone=9999999999, pwd=Admin@123</p>
-                </div>
+              <div className="mt-2 space-y-2">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Demo Credentials</p>
+                {DEMO_ACCOUNTS.map(acc => (
+                  <button
+                    type="button"
+                    key={acc.email}
+                    onClick={() => fillDemo(acc)}
+                    className={`w-full p-3 ${acc.bg} border ${acc.border} rounded-xl text-left hover:brightness-95 transition-all`}
+                  >
+                    <p className={`text-xs font-bold ${acc.text}`}>{acc.label}</p>
+                    <p className={`text-xs ${acc.text}`}>email={acc.email}, pwd={acc.password}</p>
+                  </button>
+                ))}
               </div>
             </div>
           </div>

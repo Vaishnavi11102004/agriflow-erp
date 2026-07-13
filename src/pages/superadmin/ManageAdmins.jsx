@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import api from '../../services/api/axios';
+import adminService from '../../services/adminService';
+import { useAuth } from '../../context/AuthContext';
 import { Shield, Plus, X, CheckCircle, Search, Edit2, Ban, Play } from 'lucide-react';
 import toast from 'react-hot-toast';
 import validators from '../../utils/validators';
@@ -9,6 +10,7 @@ import FieldError from '../../components/shared/FieldError';
 
 export default function ManageAdmins() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -26,7 +28,7 @@ export default function ManageAdmins() {
         else if (value.length !== 10) error = 'Phone Number must contain exactly 10 digits.';
         else error = null;
         break;
-      case 'email': error = validators.email(value); break;
+      case 'email': error = validators.emailRequired(value); break;
       case 'password': 
         if (!form.id && !value) error = 'Password is required';
         else if (value) error = validators.password(value);
@@ -44,10 +46,7 @@ export default function ManageAdmins() {
 
   const { data: managers = [], isLoading: loading } = useQuery({
     queryKey: ['superadmin-managers'],
-    queryFn: async () => {
-      const res = await api.get('/admin/managers');
-      return res.data;
-    }
+    queryFn: () => adminService.getManagers()
   });
 
   const openAdd = () => { setForm({ id: null, name: '', phone: '', email: '', password: '', status: 'active' }); setFieldErrors({}); setShowModal(true); };
@@ -66,19 +65,23 @@ export default function ManageAdmins() {
     
     setSaving(true);
     try {
-      if (form.id) await api.patch(`/admin/managers/${form.id}`, form);
-      else await api.post('/admin/managers', form);
+      if (form.id) {
+        await adminService.updateManager(form.id, { name: form.name, phone: form.phone, email: form.email, status: form.status }, user?.id);
+        if (form.password) await adminService.resetManagerPassword(form.id, form.password);
+      } else {
+        await adminService.createManager(form);
+      }
       toast.success(form.id ? 'Manager updated' : 'Manager added');
       setShowModal(false);
       queryClient.invalidateQueries({ queryKey: ['superadmin-managers'] });
-    } catch (err) { toast.error(err.response?.data?.error || 'Save failed'); }
+    } catch (err) { toast.error(err.message || 'Save failed'); }
     finally { setSaving(false); }
   };
 
   const handleToggleStatus = async (m) => {
     const newStatus = m.status === 'active' ? 'suspended' : 'active';
     try {
-      await api.patch(`/admin/managers/${m.id}`, { status: newStatus });
+      await adminService.updateManagerStatus(m.id, newStatus, user?.id);
       toast.success(`Manager ${newStatus}`);
       queryClient.invalidateQueries({ queryKey: ['superadmin-managers'] });
     } catch (err) {
@@ -101,7 +104,38 @@ export default function ManageAdmins() {
       </div>
 
       <div className="glass-card overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile cards */}
+        <div className="sm:hidden divide-y divide-gray-100">
+          {loading
+            ? <div className="flex justify-center py-10"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>
+            : filtered.length === 0
+              ? <p className="text-center py-10 text-gray-400 text-sm">{t('no_managers_found')}</p>
+              : filtered.map(m => (
+                <div key={m.id} className="p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center text-primary-600 flex-shrink-0"><Shield size={16} /></div>
+                      <div>
+                        <p className="font-semibold text-gray-800">{m.name}</p>
+                        <p className="text-xs text-gray-500">{m.phone}</p>
+                      </div>
+                    </div>
+                    <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${m.status === 'active' ? 'bg-green-100 text-green-600' : m.status === 'suspended' ? 'bg-orange-100 text-orange-600' : 'bg-red-100 text-red-600'}`}>{m.status}</span>
+                  </div>
+                  <p className="text-xs text-gray-500">{m.email || '-'}</p>
+                  <p className="text-xs text-gray-400">{m.created_at ? new Date(m.created_at).toLocaleDateString() : '-'}</p>
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={() => handleToggleStatus(m)} className={`p-2 rounded-lg transition-colors ${m.status === 'active' ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-green-50 text-green-500 hover:bg-green-100'}`} title={m.status === 'active' ? 'Deactivate' : 'Activate'}>
+                      {m.status === 'active' ? <Ban size={16} /> : <Play size={16} />}
+                    </button>
+                    <button onClick={() => openEdit(m)} className="p-2 bg-gray-100 text-gray-500 hover:text-primary-600 rounded-lg hover:bg-gray-200 transition-colors"><Edit2 size={16} /></button>
+                  </div>
+                </div>
+              ))
+          }
+        </div>
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50">
@@ -124,8 +158,12 @@ export default function ManageAdmins() {
                       </td>
                       <td className="p-4 text-gray-600">{m.phone}</td>
                       <td className="p-4 text-gray-600">{m.email || '-'}</td>
-                      <td className="p-4"><span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${m.status === 'active' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>{m.status}</span></td>
-                      <td className="p-4 text-gray-400 text-sm">{new Date(m.created_at * 1000).toLocaleDateString()}</td>
+                      <td className="p-4"><span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                        m.status === 'active' ? 'bg-green-100 text-green-600' :
+                        m.status === 'suspended' ? 'bg-orange-100 text-orange-600' :
+                        'bg-red-100 text-red-600'
+                      }`}>{m.status}</span></td>
+                      <td className="p-4 text-gray-400 text-sm">{m.created_at ? new Date(m.created_at).toLocaleDateString() : '-'}</td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button onClick={() => handleToggleStatus(m)} className={`p-2 rounded-lg transition-colors ${m.status === 'active' ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-green-50 text-green-500 hover:bg-green-100'}`} title={m.status === 'active' ? 'Deactivate' : 'Activate'}>
@@ -143,8 +181,8 @@ export default function ManageAdmins() {
       </div>
 
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay items-start pt-4 sm:items-center sm:pt-0" onClick={() => setShowModal(false)}>
+          <div className="modal-content w-full mx-3 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Shield size={18} className="text-primary-600" />{form.id ? t('edit_manager') : t('new_manager')}</h3>
               <button onClick={() => setShowModal(false)} className="btn-icon"><X size={20} /></button>
@@ -161,8 +199,8 @@ export default function ManageAdmins() {
                 <FieldError error={fieldErrors.phone} />
               </div>
               <div>
-                <label className="label">{t("email")}</label>
-                <input type="email" value={form.email || ''} onChange={e => updateForm('email', e.target.value)} onBlur={() => validateField('email', form.email)} className={`input-field ${fieldErrors.email ? 'border-red-400 ring-1 ring-red-200' : ''}`} />
+                <label className="label">{t("email")} *</label>
+                <input type="email" value={form.email || ''} onChange={e => updateForm('email', e.target.value)} onBlur={() => validateField('email', form.email)} className={`input-field ${fieldErrors.email ? 'border-red-400 ring-1 ring-red-200' : ''}`} required />
                 <FieldError error={fieldErrors.email} />
               </div>
               <div>

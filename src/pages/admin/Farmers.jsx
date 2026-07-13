@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import api from '../../services/api/axios';
-import { Users, Search, Eye, Check, X, ChevronRight, User, Plus, UserPlus } from 'lucide-react';
+import adminService from '../../services/adminService';
+import managerService from '../../services/managerService';
+import { useAuth } from '../../context/AuthContext';
+import { Users, Search, Eye, Check, X, ChevronRight, User, Plus, UserPlus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import validators from '../../utils/validators';
 import FieldError from '../../components/shared/FieldError';
 
 export default function FarmersDirectory() {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'super_admin';
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -26,7 +30,7 @@ export default function FarmersDirectory() {
 
   const [regSaving, setRegSaving] = useState(false);
   const [registerForm, setRegisterForm] = useState({
-    name: '', phone: '', password: '', address: '', acres_of_land: '', crop_address: ''
+    name: '', phone: '', email: '', password: '', address: '', acres_of_land: '', crop_address: ''
   });
   const [fieldErrors, setFieldErrors] = useState({});
 
@@ -38,8 +42,10 @@ export default function FarmersDirectory() {
         if (!value) error = 'Phone Number is required.';
         else if (!/^\d+$/.test(value)) error = 'Phone Number must contain only digits.';
         else if (value.length !== 10) error = 'Phone Number must contain exactly 10 digits.';
+        else if (!/^[6-9]/.test(value)) error = 'Invalid mobile number';
         else error = null;
         break;
+      case 'email': error = validators.emailRequired(value); break;
       case 'password': error = validators.password(value); break;
       case 'address': error = value ? validators.address(value) : null; break;
       case 'acres_of_land': error = value ? validators.acres(value) : null; break;
@@ -57,25 +63,33 @@ export default function FarmersDirectory() {
 
   const { data: farmers = [], isLoading: loading } = useQuery({
     queryKey: ['admin-farmers'],
-    queryFn: async () => {
-      const res = await api.get('/admin/farmers');
-      return res.data;
-    }
+    queryFn: () => adminService.getFarmers()
   });
 
   const loadDetail = async (id) => {
     setDetailLoading(true);
-    const { data } = await api.get(`/admin/farmers/${id}`);
+    const data = await adminService.getFarmerDetails(id);
     setDetail(data); setDetailLoading(false);
   };
 
   const handleAction = async (id, status) => {
     try {
-      await api.patch(`/admin/farmers/${id}/approve`, { status });
+      await managerService.approveFarmer(id, status, null, user?.id);
       toast.success(t('farmer') + ' ' + status);
       queryClient.invalidateQueries({ queryKey: ['admin-farmers'] });
       if (selected === id) setDetail(d => ({ ...d, farmer: { ...d.farmer, status } }));
     } catch { toast.error(t('action_failed')); }
+  };
+
+  const handleDelete = async (id, e) => {
+    e.stopPropagation();
+    if (!window.confirm('Delete this farmer? This cannot be undone.')) return;
+    try {
+      await adminService.deleteFarmer(id, user?.id, user?.name);
+      toast.success('Farmer deleted');
+      queryClient.invalidateQueries({ queryKey: ['admin-farmers'] });
+      if (selected === id) { setSelected(null); setDetail(null); }
+    } catch (err) { toast.error(err.message || 'Delete failed'); }
   };
 
   const handleRegisterFarmer = async (e) => {
@@ -84,12 +98,13 @@ export default function FarmersDirectory() {
     // Validate on form submission
     const nameErr = validateField('name', registerForm.name);
     const phoneErr = validateField('phone', registerForm.phone);
+    const emailErr = validateField('email', registerForm.email);
     const passErr = validateField('password', registerForm.password);
     const addrErr = validateField('address', registerForm.address);
     const acresErr = validateField('acres_of_land', registerForm.acres_of_land);
     const cropAddrErr = validateField('crop_address', registerForm.crop_address);
-    
-    if (nameErr || phoneErr || passErr || addrErr || acresErr || cropAddrErr) {
+
+    if (nameErr || phoneErr || emailErr || passErr || addrErr || acresErr || cropAddrErr) {
       return; // Stop submission if errors
     }
     
@@ -106,14 +121,13 @@ export default function FarmersDirectory() {
         payload.acres_of_land = parsedAcres;
       }
 
-      await api.post('/admin/farmers', payload);
+      await adminService.createFarmer(payload);
       toast.success('Farmer registered successfully!');
       queryClient.invalidateQueries({ queryKey: ['admin-farmers'] });
       setShowRegisterModal(false);
-      setRegisterForm({ name: '', phone: '', password: '', address: '', acres_of_land: '', crop_address: '' });
+      setRegisterForm({ name: '', phone: '', email: '', password: '', address: '', acres_of_land: '', crop_address: '' });
     } catch (err) {
-      const msg = err.response?.data?.details?.[0]?.message || err.response?.data?.error || 'Registration failed';
-      toast.error(msg);
+      toast.error(err.message || 'Registration failed');
     } finally { setRegSaving(false); }
   };
 
@@ -129,9 +143,11 @@ export default function FarmersDirectory() {
     <div className="animate-fade-in">
       <div className="page-header flex justify-between items-center">
         <div><h1 className="page-title">{t('farmers')}</h1><p className="page-subtitle">{t("manage_farmers_desc")}</p></div>
-        <button onClick={() => setShowRegisterModal(true)} className="btn-primary flex items-center gap-2">
-          <UserPlus size={16} /> Register Farmer
-        </button>
+        {isSuperAdmin && (
+          <button onClick={() => setShowRegisterModal(true)} className="btn-primary flex items-center gap-2">
+            <UserPlus size={16} /> Register Farmer
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
@@ -149,7 +165,26 @@ export default function FarmersDirectory() {
       <div className="flex gap-5">
         {/* Table */}
         <div className={`glass-card overflow-hidden flex-1 ${selected ? 'hidden xl:block' : ''}`}>
-          <div className="table-container">
+          {/* Mobile cards */}
+          <div className="sm:hidden divide-y divide-gray-100">
+            {loading ? <div className="flex justify-center py-10"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>
+              : filtered.length === 0 ? <p className="text-center py-10 text-gray-400 text-sm">{t('no_farmers_found')}</p>
+              : filtered.map(f => (
+                <div key={f.id} className="p-4 flex justify-between items-center cursor-pointer" onClick={() => { setSelected(f.id); loadDetail(f.id); }}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold">{f.name?.[0]}</div>
+                    <div>
+                      <p className="font-semibold text-gray-800">{f.name}</p>
+                      <p className="text-xs text-gray-500">{f.phone}</p>
+                    </div>
+                  </div>
+                  <span className={`badge ${statusBadge(f.status)}`}>{t(f.status)}</span>
+                </div>
+              ))
+            }
+          </div>
+          {/* Desktop table */}
+          <div className="hidden sm:block table-container">
             <table className="data-table">
               <thead><tr>
                 <th>{t("farmer")}</th><th>{t("phone")}</th><th>{t("address")}</th><th>{t("acres")}</th><th>{t("status")}</th><th>{t("registered")}</th><th>{t("actions")}</th>
@@ -191,6 +226,7 @@ export default function FarmersDirectory() {
                               </>
                             )}
                             <button onClick={e => { e.stopPropagation(); setSelected(f.id); loadDetail(f.id); }} className="p-1.5 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200"><Eye size={14} /></button>
+                            {isSuperAdmin && <button onClick={e => handleDelete(f.id, e)} className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors" title="Delete farmer"><Trash2 size={14} /></button>}
                           </div>
                         </td>
                       </tr>
@@ -226,6 +262,11 @@ export default function FarmersDirectory() {
                         <button onClick={() => handleAction(detail.farmer.id, 'rejected')} className="btn-danger flex-1 py-2 text-xs flex items-center justify-center gap-1"><X size={14} />{t("reject")}</button>
                       </div>
                     )}
+                    {isSuperAdmin && (
+                      <button onClick={e => handleDelete(detail.farmer.id, e)} className="w-full mt-1 py-2 text-xs rounded-xl bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center gap-1 transition-colors">
+                        <Trash2 size={13} /> Delete Farmer
+                      </button>
+                    )}
                     <div className="space-y-2 text-sm">
                       {[
                         [t('address'), detail.farmer.address],
@@ -252,7 +293,7 @@ export default function FarmersDirectory() {
                             <div key={tx.id} className="bg-gray-50 p-2 rounded-lg flex justify-between items-center">
                               <div className="flex-1 min-w-0 pr-2">
                                 <p className="text-[11px] text-gray-800 font-medium truncate">{tx.description}</p>
-                                <p className="text-[9px] text-gray-400">{new Date(tx.created_at * 1000).toLocaleDateString('en-IN')}</p>
+                                <p className="text-[9px] text-gray-400">{new Date(tx.created_at).toLocaleDateString('en-IN')}</p>
                               </div>
                               <span className={`text-xs font-bold whitespace-nowrap ${tx.direction === 'credit' ? 'text-green-600' : 'text-red-500'}`}>
                                 {tx.direction === 'credit' ? '+' : '-'}₹{tx.amount.toLocaleString()}
@@ -272,8 +313,8 @@ export default function FarmersDirectory() {
 
       {/* Register Farmer Modal */}
       {showRegisterModal && (
-        <div className="modal-overlay">
-          <div className="modal-content max-w-lg">
+        <div className="modal-overlay items-start pt-4 sm:items-center sm:pt-0">
+          <div className="modal-content max-w-lg w-full mx-3 max-h-[90vh] overflow-y-auto">
             <div className="modal-header">
               <h3 className="modal-title">Register New Farmer</h3>
               <button onClick={() => setShowRegisterModal(false)} className="btn-icon"><X size={18} /></button>
@@ -292,10 +333,15 @@ export default function FarmersDirectory() {
                     <FieldError error={fieldErrors.phone} />
                   </div>
                   <div>
-                    <label className="label">Password *</label>
-                    <input type="password" value={registerForm.password} onChange={e => updateForm('password', e.target.value)} onBlur={() => validateField('password', registerForm.password)} className={`input-field ${fieldErrors.password ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder="Min. 8 characters" required />
-                    <FieldError error={fieldErrors.password} />
+                    <label className="label">Email Address *</label>
+                    <input type="email" value={registerForm.email} onChange={e => updateForm('email', e.target.value)} onBlur={() => validateField('email', registerForm.email)} className={`input-field ${fieldErrors.email ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder="farmer@example.com" required />
+                    <FieldError error={fieldErrors.email} />
                   </div>
+                </div>
+                <div>
+                  <label className="label">Password *</label>
+                  <input type="password" value={registerForm.password} onChange={e => updateForm('password', e.target.value)} onBlur={() => validateField('password', registerForm.password)} className={`input-field ${fieldErrors.password ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder="Min. 8 characters" required />
+                  <FieldError error={fieldErrors.password} />
                 </div>
                 <div>
                   <label className="label">Address</label>
