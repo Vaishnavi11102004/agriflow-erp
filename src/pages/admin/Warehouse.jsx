@@ -174,7 +174,7 @@ export default function WarehouseManagement() {
                         <p className="text-[10px] text-gray-500">{t("updated")}: {new Date(inv.last_updated).toLocaleDateString()}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-primary-700">{inv.quantity_kg.toLocaleString('en-IN')} kg</p>
+                        <p className="font-bold text-primary-700">{inv.quantity_kg.toLocaleString('en-IN')} Quintals</p>
                         <p className="text-[10px] text-gray-500">{((inv.quantity_kg / selectedInventory.total_capacity_kg) * 100).toFixed(1)}% of total cap</p>
                       </div>
                     </div>
@@ -197,7 +197,7 @@ export default function WarehouseManagement() {
                             <p className="text-xs text-gray-500">{slot.start_time} - {slot.end_time}</p>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold text-gray-800">{slot.booked_capacity_kg} / {slot.total_capacity_kg} kg</p>
+                            <p className="font-bold text-gray-800">{slot.booked_capacity_kg} / {slot.total_capacity_kg} Quintals</p>
                             <p className="text-[10px] text-gray-500">{pct.toFixed(1)}% booked</p>
                           </div>
                         </div>
@@ -277,7 +277,7 @@ export default function WarehouseManagement() {
                 </div>
               )}
               <div>
-                <label className="label">{t('quantity_kg', 'Quantity (kg)')} *</label>
+                <label className="label">{t('quantity_kg', 'Quantity (Quintals)')} *</label>
                 <input type="number" value={invForm.quantity_kg} onChange={e => { setInvForm(f => ({ ...f, quantity_kg: e.target.value })); setFieldErrors(prev => ({...prev, inventory_quantity_kg: null}))}} onBlur={() => validateField('inventory', 'quantity_kg', invForm.quantity_kg)} className={`input-field ${fieldErrors.inventory_quantity_kg ? 'border-red-400 ring-1 ring-red-200' : ''}`} min="1" step="1" required />
                 <FieldError error={fieldErrors.inventory_quantity_kg} />
               </div>
@@ -318,7 +318,7 @@ export default function WarehouseManagement() {
                 </div>
               </div>
               <div>
-                <label className="label">{t('slot_capacity_kg', 'Slot Capacity (kg)')} *</label>
+                <label className="label">{t('slot_capacity_kg', 'Slot Capacity (Quintals)')} *</label>
                 <input type="number" value={slotForm.total_capacity_kg} onChange={e => { setSlotForm(f => ({ ...f, total_capacity_kg: e.target.value })); setFieldErrors(prev => ({...prev, slot_total_capacity_kg: null}))}} onBlur={() => validateField('slot', 'total_capacity_kg', slotForm.total_capacity_kg)} className={`input-field ${fieldErrors.slot_total_capacity_kg ? 'border-red-400 ring-1 ring-red-200' : ''}`} min="100" step="100" required />
                 <FieldError error={fieldErrors.slot_total_capacity_kg} />
               </div>

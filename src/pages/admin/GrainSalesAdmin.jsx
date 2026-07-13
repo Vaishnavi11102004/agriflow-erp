@@ -134,8 +134,8 @@ export default function GrainSalesAdmin() {
             <tr>
               <th>Description</th>
               <th>Grade</th>
-              <th>Qty (kg)</th>
-              <th>Rate (₹/kg)</th>
+              <th>Qty (Quintals)</th>
+              <th>Rate (₹/Quintal)</th>
               <th style="text-align: right;">Amount (₹)</th>
             </tr>
             <tr>
@@ -212,7 +212,7 @@ export default function GrainSalesAdmin() {
                 <span className={`badge ${statusBadge(s.status)}`}>{s.status}</span>
               </div>
               <div className="flex justify-between mt-2 text-xs text-gray-500">
-                <span>{s.good_material_kg} kg good</span>
+                <span>{s.good_material_kg} Quintals good</span>
                 <span className="font-semibold text-gray-700">₹{(s.total_amount || 0).toLocaleString('en-IN')}</span>
               </div>
             </button>
@@ -299,16 +299,16 @@ export default function GrainSalesAdmin() {
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="label">Total Raw Qty (kg) *</label>
-                  <input type="number" value={form.raw_material_kg} onChange={e => setForm(f => ({ ...f, raw_material_kg: e.target.value }))} className="input-field" placeholder="e.g. 1000" required />
+                  <label className="label">Total Raw Qty (Quintals) *</label>
+                  <input type="number" value={form.raw_material_kg} onChange={e => setForm(f => ({ ...f, raw_material_kg: e.target.value }))} className="input-field" placeholder="e.g. 10" required />
                 </div>
                 <div>
-                  <label className="label">Good Qty (kg) *</label>
-                  <input type="number" value={form.good_material_kg} onChange={e => setForm(f => ({ ...f, good_material_kg: e.target.value }))} className="input-field" placeholder="e.g. 950" required />
+                  <label className="label">Good Qty (Quintals) *</label>
+                  <input type="number" value={form.good_material_kg} onChange={e => setForm(f => ({ ...f, good_material_kg: e.target.value }))} className="input-field" placeholder="e.g. 9.5" required />
                 </div>
                 <div>
-                  <label className="label">Wastage (kg)</label>
-                  <input type="number" value={form.wastage_kg} onChange={e => setForm(f => ({ ...f, wastage_kg: e.target.value }))} className="input-field" placeholder="e.g. 50" />
+                  <label className="label">Wastage (Quintals)</label>
+                  <input type="number" value={form.wastage_kg} onChange={e => setForm(f => ({ ...f, wastage_kg: e.target.value }))} className="input-field" placeholder="e.g. 0.5" />
                 </div>
               </div>
 
@@ -334,9 +334,9 @@ export default function GrainSalesAdmin() {
               ['Farmer', selectedSale.farmer_name],
               ['Crop Type', selectedSale.grain_type],
               ['Grade', `Grade ${selectedSale.grade}`],
-              ['Raw Material', `${selectedSale.raw_material_kg} kg`],
-              ['Good Qty', `${selectedSale.good_material_kg} kg`],
-              ['Wastage', `${selectedSale.wastage_kg || 0} kg`],
+              ['Raw Material', `${selectedSale.raw_material_kg} Quintals`],
+              ['Good Qty', `${selectedSale.good_material_kg} Quintals`],
+              ['Wastage', `${selectedSale.wastage_kg || 0} Quintals`],
               ['Est. Amount', `₹${(selectedSale.total_amount || 0).toLocaleString('en-IN')}`],
               ['Date', new Date(selectedSale.created_at).toLocaleDateString('en-IN')],
             ].map(([label, value]) => (

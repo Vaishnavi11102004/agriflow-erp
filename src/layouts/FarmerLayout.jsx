@@ -222,19 +222,28 @@ export default function FarmerLayout() {
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex items-center justify-around z-40 h-16 shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.05)] safe-area-pb px-1">
-        {navItems.map(item => (
-          <NavLink key={item.to} to={item.to} end={item.end}
-            className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full gap-1 transition-all ${isActive ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'}`}>
-            {({ isActive }) => (
-              <>
-                <div className={`relative flex items-center justify-center w-10 h-8 rounded-full transition-all ${isActive ? 'bg-primary-100/50 scale-110' : ''}`}>
-                  {isActive ? React.cloneElement(item.icon, { size: 20, className: 'text-primary-600 font-bold drop-shadow-sm' }) : React.cloneElement(item.icon, { size: 18 })}
-                </div>
-                <span className={`text-[9px] sm:text-[10px] leading-tight truncate w-full text-center px-1 font-medium ${isActive ? 'font-bold text-primary-700' : ''}`}>{item.label}</span>
-              </>
-            )}
-          </NavLink>
-        ))}
+        {(() => {
+          const mobileItems = [
+            navItems.find(i => i.to === '/farmer/seeds'),
+            navItems.find(i => i.to === '/farmer/crops'),
+            navItems.find(i => i.to === '/farmer/booking-slots'),
+            { ...navItems.find(i => i.to === '/farmer/profile'), label: 'Profile & Txns' }
+          ].filter(Boolean);
+          
+          return mobileItems.map(item => (
+            <NavLink key={item.to} to={item.to} end={item.end}
+              className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full gap-1 transition-all ${isActive ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'}`}>
+              {({ isActive }) => (
+                <>
+                  <div className={`relative flex items-center justify-center w-10 h-8 rounded-full transition-all ${isActive ? 'bg-primary-100/50 scale-110' : ''}`}>
+                    {isActive ? React.cloneElement(item.icon, { size: 20, className: 'text-primary-600 font-bold drop-shadow-sm' }) : React.cloneElement(item.icon, { size: 18 })}
+                  </div>
+                  <span className={`text-[9px] sm:text-[10px] leading-tight truncate w-full text-center px-1 font-medium ${isActive ? 'font-bold text-primary-700' : ''}`}>{item.label}</span>
+                </>
+              )}
+            </NavLink>
+          ));
+        })()}
       </nav>
 
       {/* Chatbot — bottom-20 on mobile clears the fixed bottom nav (h-16 + safe

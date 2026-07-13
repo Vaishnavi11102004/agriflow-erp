@@ -173,9 +173,8 @@ export default function SuperAdminLayout() {
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex overflow-x-auto z-40 h-16 shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.05)] safe-area-pb hide-scrollbar">
-        {navItems.filter(item => item.type !== 'header' && ['/visits', '/grain-sales', '/booking-slots', '/seed-purchases', '/seeds'].some(p => item.to.endsWith(p))).map(item => (
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex overflow-x-auto z-40 h-16 shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.05)] safe-area-pb">
+        {navItems.filter(item => item.type !== 'header' && ['/visits', '/grain-sales', '/booking-slots', '/seed-purchases', '/seeds', '/profile'].some(p => item.to.endsWith(p))).map(item => (
           <NavLink key={item.to} to={item.to} end={item.end}
             className={({ isActive }) => `flex-shrink-0 flex flex-col items-center justify-center w-[72px] h-full gap-1 transition-all ${isActive ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'}`}>
             {({ isActive }) => (

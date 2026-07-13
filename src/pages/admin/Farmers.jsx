@@ -41,9 +41,9 @@ export default function FarmersDirectory() {
       case 'phone': error = validators.phone(value); break;
       case 'email': error = validators.emailRequired(value); break;
       case 'password': error = validators.password(value); break;
-      case 'address': error = value ? validators.address(value) : null; break;
-      case 'acres_of_land': error = value ? validators.acres(value) : null; break;
-      case 'crop_address': error = null; break;
+      case 'address': error = validators.address(value); break;
+      case 'acres_of_land': error = validators.acres(value); break;
+      case 'crop_address': error = validators.address(value); break;
       default: break;
     }
     setFieldErrors(prev => ({ ...prev, [field]: error }));
@@ -125,11 +125,7 @@ export default function FarmersDirectory() {
       if (!payload.crop_address) delete payload.crop_address;
       
       const parsedAcres = parseFloat(payload.acres_of_land);
-      if (isNaN(parsedAcres) || parsedAcres <= 0) {
-        delete payload.acres_of_land;
-      } else {
-        payload.acres_of_land = parsedAcres;
-      }
+      payload.acres_of_land = parsedAcres;
 
       await adminService.createFarmer(payload);
       toast.success('Farmer registered successfully!');
@@ -371,18 +367,18 @@ export default function FarmersDirectory() {
                   <FieldError error={fieldErrors.password} />
                 </div>
                 <div>
-                  <label className="label">Address</label>
+                  <label className="label">Address *</label>
                   <input value={registerForm.address} onChange={e => updateForm('address', e.target.value)} onBlur={() => validateField('address', registerForm.address)} className={`input-field ${fieldErrors.address ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder="Village / Town" />
                   <FieldError error={fieldErrors.address} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="label">Acres of Land</label>
+                    <label className="label">Acres of Land *</label>
                     <input type="number" value={registerForm.acres_of_land} onChange={e => updateForm('acres_of_land', e.target.value)} onBlur={() => validateField('acres_of_land', registerForm.acres_of_land)} className={`input-field ${fieldErrors.acres_of_land ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder="e.g. 5" />
                     <FieldError error={fieldErrors.acres_of_land} />
                   </div>
                   <div>
-                    <label className="label">Crop Address</label>
+                    <label className="label">Crop Address *</label>
                     <input value={registerForm.crop_address} onChange={e => updateForm('crop_address', e.target.value)} onBlur={() => validateField('crop_address', registerForm.crop_address)} className={`input-field ${fieldErrors.crop_address ? 'border-red-400 ring-1 ring-red-200' : ''}`} placeholder="Farm location" />
                     <FieldError error={fieldErrors.crop_address} />
                   </div>

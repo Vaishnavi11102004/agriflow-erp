@@ -197,6 +197,7 @@ serve(async (req) => {
       const { data: seed, error } = await supabase.from('seeds').insert({
         name, variety: variety || null, price_per_kg: parseFloat(price_per_kg), stock_kg: parseFloat(stock_kg),
         on_hold_kg: 0, description: description || null, image_url: image_url || null, is_active: !!is_active,
+        warehouse_id: warehouse_ids?.[0] || null
       }).select('id').single();
       if (error) throw error;
 
@@ -216,6 +217,7 @@ serve(async (req) => {
       const updateFields: Record<string, any> = {
         name, variety: variety || null, stock_kg: parseFloat(stock_kg),
         description: description || null, image_url: image_url || null, is_active: !!is_active,
+        warehouse_id: warehouse_ids?.[0] || null
       };
       // Managers cannot change price on existing seeds — mirrors the UI restriction.
       if (role === 'super_admin') {

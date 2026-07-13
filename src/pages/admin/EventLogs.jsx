@@ -124,7 +124,6 @@ export default function EventLogs() {
           <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t("search_logs_placeholder") || "Search by action or farmer..."} className="input-field pl-11 py-3" />
         </div>
-        <button className="px-4 py-3 bg-white border border-gray-200 text-gray-600 hover:text-primary-600 rounded-xl flex items-center gap-2 transition-colors shadow-sm"><Filter size={18} />{t("filter") || "Filter"}</button>
       </div>
 
       <div className="glass-card overflow-hidden">

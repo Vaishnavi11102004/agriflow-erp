@@ -137,19 +137,8 @@ export default function AdminDashboard() {
       </div>
 
       {/* Pending Approvals + Recent Transactions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {data?.pendingFarmers > 0 && (
-          <div className="section-card border-l-4 border-amber-400">
-            <h3 className="section-title"><AlertCircle size={18} className="text-amber-500" />{t("action_required")}</h3>
-            <div className="flex items-center justify-between p-4 bg-amber-50 rounded-xl">
-              <div>
-                <p className="font-semibold text-gray-800">{data.pendingFarmers} {t("pending_registration")}{data.pendingFarmers > 1 ? 's' : ''}</p>
-                <p className="text-xs text-gray-500">{t("farmers_waiting_approval")}</p>
-              </div>
-              <button onClick={() => navigate('/manager/dashboard/farmers')} className="btn-gold btn-sm">{t("review")}</button>
-            </div>
-          </div>
-        )}
+      <div className="grid grid-cols-1 gap-6">
+
 
         <div className="section-card">
           <h3 className="section-title"><TrendingUp size={18} className="text-primary-600" />{t("recent_transactions")}</h3>
