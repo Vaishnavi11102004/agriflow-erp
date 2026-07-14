@@ -575,7 +575,9 @@ export default function FarmVisits() {
                   value={addForm.crop_id} 
                   onChange={(e) => {
                     const crop = activeCrops.find(c => c.crop_id.toString() === e.target.value);
-                    setAddForm(f => ({ ...f, crop_id: e.target.value, farmer_id: crop ? crop.farmer_id : '' }));
+                    const cropVisits = crop ? visits.filter(v => v.crop_type === crop.crop_type && v.farmer_id === crop.farmer_id) : [];
+                    const nextVisit = cropVisits.length + 1;
+                    setAddForm(f => ({ ...f, crop_id: e.target.value, farmer_id: crop ? crop.farmer_id : '', visit_month: nextVisit.toString() }));
                   }}
                   required
                 >

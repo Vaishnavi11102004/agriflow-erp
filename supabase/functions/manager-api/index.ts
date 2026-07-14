@@ -24,8 +24,32 @@ serve(async (req) => {
 
     if (action === 'approveFarmer') {
       const { farmerId, status, notes, adminId } = payload;
-      const { error } = await supabase.rpc('approve_farmer', { p_farmer_id: farmerId, p_status: status, p_notes: notes || null, p_admin_id: adminId });
+      let appUserId = typeof farmerId === 'number' ? farmerId : parseInt(farmerId);
+      let profileId = '';
+      
+      if (isNaN(appUserId)) {
+        // farmerId must be UUID, resolve it
+        const { data: profile } = await supabase.from('profiles').select('id, app_user_id').eq('id', farmerId).maybeSingle();
+        if (profile) {
+          appUserId = profile.app_user_id;
+          profileId = profile.id;
+        }
+      } else {
+        // farmerId is integer app_user_id, resolve the UUID profile id
+        const { data: profile } = await supabase.from('profiles').select('id, app_user_id').eq('app_user_id', appUserId).maybeSingle();
+        if (profile) {
+          profileId = profile.id;
+        }
+      }
+      
+      const { error } = await supabase.rpc('approve_farmer', { p_farmer_id: appUserId, p_status: status, p_notes: notes || null, p_admin_id: adminId });
       if (error) throw error;
+      
+      const ids = [farmerId.toString()];
+      if (appUserId) ids.push(appUserId.toString());
+      if (profileId) ids.push(profileId);
+      
+      await supabase.from('notifications').update({ is_read: true }).eq('reference_type', 'farmer').in('reference_id', ids);
       return new Response(JSON.stringify({ message: 'Farmer status updated' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -46,6 +70,7 @@ serve(async (req) => {
       const { requestId, status, notes, adminId } = payload;
       const { error } = await supabase.rpc('review_bank_request', { p_request_id: requestId, p_status: status, p_notes: notes || null, p_admin_id: adminId });
       if (error) throw error;
+      await supabase.from('notifications').update({ is_read: true }).eq('reference_type', 'bank_request').eq('reference_id', requestId);
       return new Response(JSON.stringify({ message: `Bank request ${status}` }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -147,6 +172,7 @@ serve(async (req) => {
       const { slotId, goodQty, badQty, adminName, adminId } = payload;
       const { error } = await supabase.rpc('update_booking_yield', { p_slot_id: slotId, p_good_qty: parseFloat(goodQty), p_bad_qty: parseFloat(badQty), p_admin_name: adminName, p_admin_id: adminId });
       if (error) throw error;
+      await supabase.from('notifications').update({ is_read: true }).eq('reference_type', 'booking_slot').eq('reference_id', slotId.toString());
       return new Response(JSON.stringify({ message: 'Yield updated successfully' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -154,6 +180,7 @@ serve(async (req) => {
       const { slotId, status, warehouseSlotId, adminName, adminId } = payload;
       const { error } = await supabase.rpc('update_booking_status', { p_slot_id: slotId, p_status: status, p_warehouse_slot_id: warehouseSlotId ? parseInt(warehouseSlotId) : null, p_admin_name: adminName, p_admin_id: adminId });
       if (error) throw error;
+      await supabase.from('notifications').update({ is_read: true }).eq('reference_type', 'booking_slot').eq('reference_id', slotId);
       return new Response(JSON.stringify({ message: `Slot ${status}` }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -162,6 +189,7 @@ serve(async (req) => {
       const { data, error } = await supabase.rpc('inspect_crop', { p_slot_id: slotId, p_good_qty: parseFloat(goodQty), p_bad_qty: parseFloat(badQty), p_rejection_reason: rejectionReason || null, p_notes: notes || null, p_inspector_id: inspectorId, p_inspector_name: inspectorName });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      await supabase.from('notifications').update({ is_read: true }).eq('reference_type', 'booking_slot').eq('reference_id', slotId.toString());
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -196,6 +224,13 @@ serve(async (req) => {
       const { saleId, status, finalAmount, adminId } = payload;
       const { error } = await supabase.rpc('review_grain_sale', { p_sale_id: saleId, p_status: status, p_final_amount: finalAmount ? parseFloat(finalAmount) : null, p_admin_id: adminId });
       if (error) throw error;
+      // Mark related grain_sale notifications as read for all users (sync)
+      await supabase.from('notifications').update({ is_read: true }).eq('reference_type', 'grain_sale').eq('reference_id', saleId.toString());
+      
+      const { data: slot } = await supabase.from('booking_slots').select('id').eq('grain_sale_id', saleId).maybeSingle();
+      if (slot) {
+        await supabase.from('notifications').update({ is_read: true }).eq('reference_type', 'booking_slot').eq('reference_id', slot.id.toString());
+      }
       return new Response(JSON.stringify({ message: `Sale ${status}` }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -203,6 +238,11 @@ serve(async (req) => {
       const { saleId, description, adminId } = payload;
       const { error } = await supabase.rpc('pay_grain_sale', { p_sale_id: saleId, p_description: description || null, p_admin_id: adminId });
       if (error) throw error;
+      
+      const { data: slot } = await supabase.from('booking_slots').select('id').eq('grain_sale_id', saleId).maybeSingle();
+      if (slot) {
+        await supabase.from('notifications').update({ is_read: true }).eq('reference_type', 'booking_slot').eq('reference_id', slot.id.toString());
+      }
       return new Response(JSON.stringify({ message: 'Farmer paid successfully' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 

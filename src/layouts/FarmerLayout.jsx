@@ -47,8 +47,7 @@ export default function FarmerLayout() {
     { to: '/farmer/profile', icon: <LayoutDashboard size={18} />, label: 'Account Details', end: false },
     { to: '/farmer/crops', icon: <Sprout size={18} />, label: t('crops_cycles') },
     { to: '/farmer/seeds', icon: <ShoppingCart size={18} />, label: t('seed_purchase') },
-    { to: '/farmer/booking-slots', icon: <Calendar size={18} />, label: t('booking_slot') },
-    { to: '/farmer/grain-sales', icon: <Wheat size={18} />, label: t('grain_sales') },
+    { to: '/farmer/booking-slots', icon: <Wheat size={18} />, label: t('grain_sales') },
     { to: '/farmer/transactions', icon: <History size={18} />, label: t('transaction_history') },
   ];
 

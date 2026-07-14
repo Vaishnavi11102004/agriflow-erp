@@ -53,6 +53,23 @@ serve(async (req) => {
       }).select('id').single();
       if (error) throw error;
       await supabase.from('farmer_profiles').update({ bank_status: 'pending' }).eq('user_id', bankForm.farmer_id);
+
+      const { data: admins } = await supabase.from('users').select('id').in('role', ['admin', 'manager', 'super_admin']);
+      if (admins && admins.length > 0) {
+        // Get farmer name for the notification message
+        const { data: farmerProfile } = await supabase.from('users').select('name').eq('id', bankForm.farmer_id).maybeSingle();
+        const farmerName = farmerProfile?.name || 'A farmer';
+        const notifications = admins.map((admin: any) => ({
+          user_id: admin.id,
+          title: 'Bank Change Request',
+          message: `${farmerName} has requested to change their bank details.`,
+          type: 'bank_change',
+          reference_type: 'bank_request',
+          reference_id: data.id
+        }));
+        await supabase.from('notifications').insert(notifications);
+      }
+
       return new Response(JSON.stringify({ message: 'Bank change request submitted for admin approval', id: data.id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -95,6 +112,29 @@ serve(async (req) => {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+
+      // Generate seed purchase notifications for admin/manager
+      const purchaseId = data?.purchase_id || data?.id;
+      if (purchaseId) {
+        const { data: farmer } = await supabase.from('users').select('name').eq('id', purchaseData.farmer_id).maybeSingle();
+        const { data: seed } = await supabase.from('seeds').select('name').eq('id', purchaseData.seed_id).maybeSingle();
+        const farmerName = farmer?.name || 'A farmer';
+        const seedName = seed?.name || 'seeds';
+        const qty = parseFloat(purchaseData.quantity_kg);
+        const { data: admins } = await supabase.from('users').select('id').in('role', ['admin', 'manager', 'super_admin']);
+        if (admins && admins.length > 0) {
+          const notifications = admins.map((admin: any) => ({
+            user_id: admin.id,
+            title: 'New Seed Purchase',
+            message: `${farmerName} purchased ${qty} kg of ${seedName}. Payment: ${purchaseData.payment_method}.`,
+            type: 'info',
+            reference_type: 'seed_purchase',
+            reference_id: purchaseId
+          }));
+          await supabase.from('notifications').insert(notifications);
+        }
+      }
+
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -148,6 +188,10 @@ serve(async (req) => {
         farmer_id: farmerId, grain_sale_id: grain_sale_id || null, booking_date, delivery_address, grain_type, warehouse_id, quantity_kg: parseFloat(quantity_kg), status: 'pending'
       }).select('id').single();
       if (error) throw error;
+
+      // Notifications are created by the DB trigger (notify_on_booking_slot) which
+      // fires on INSERT and already includes reference_type/reference_id for shared read state.
+
       return new Response(JSON.stringify({ id: data.id, message: 'Booking slot created. Awaiting confirmation.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 

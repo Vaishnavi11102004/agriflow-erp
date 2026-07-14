@@ -37,7 +37,7 @@ export default function BookingSlot() {
 
   const selectedWarehouse = warehouses.find(w => w.id === parseInt(form.warehouse_id));
   const available_kg = selectedWarehouse ? selectedWarehouse.available_kg : null;
-  const capacityWarning = form.quantity_kg && available_kg !== null && parseFloat(form.quantity_kg) > available_kg;
+  const capacityWarning = form.quantity_kg && available_kg !== null && (parseFloat(form.quantity_kg) * 100) > available_kg;
 
   const handleBook = async (e) => {
     e.preventDefault();
@@ -45,7 +45,8 @@ export default function BookingSlot() {
     if (!form.booking_date) return toast.error('Please select a booking date');
     if (!form.warehouse_id) return toast.error('Please select a warehouse');
     if (!form.quantity_kg || parseFloat(form.quantity_kg) <= 0) return toast.error('Please enter a valid quantity');
-    if (capacityWarning) return toast.error(t('insufficient_capacity', { capacity: (available_kg / 100).toFixed(1) }));
+    const requestedKg = parseFloat(form.quantity_kg) * 100;
+    if (requestedKg > available_kg) return toast.error(t('insufficient_capacity', { capacity: (available_kg / 100).toFixed(1) }));
     setSaving(true);
     try {
       await farmerService.bookDeliverySlot(user.id, {
@@ -53,7 +54,7 @@ export default function BookingSlot() {
         delivery_address: profile?.address || '',
         grain_type: form.grain_type,
         warehouse_id: parseInt(form.warehouse_id),
-        quantity_kg: parseFloat(form.quantity_kg)
+        quantity_kg: requestedKg
       });
       toast.success(t('booking_created'));
       setShowModal(false);
@@ -69,7 +70,7 @@ export default function BookingSlot() {
   return (
     <div className="animate-fade-in">
       <div className="page-header">
-        <div><h1 className="page-title">{t('booking_slot')}</h1><p className="page-subtitle">{t('booking_slot_desc')}</p></div>
+        <div><h1 className="page-title">{t('grain_sales', 'Grain Sales')}</h1><p className="page-subtitle">{t('booking_slot_desc')}</p></div>
         <button onClick={() => { setForm({ grain_sale_id: '', warehouse_id: '', grain_type: '', quantity_kg: '', booking_date: '' }); setShowModal(true); }} className="btn-primary flex items-center gap-2"><Plus size={16} />{t('book_slot')}</button>
       </div>
 
@@ -112,7 +113,7 @@ export default function BookingSlot() {
               <div key={s.id} className="p-4 flex justify-between items-center cursor-pointer" onClick={() => setSelectedSlot(s)}>
                 <div>
                   <p className="font-semibold text-gray-800">{s.grain_type}</p>
-                  <p className="text-xs text-gray-500">{s.booking_date} · {s.quantity_kg} kg</p>
+                  <p className="text-xs text-gray-500">{s.booking_date} · {(s.quantity_kg / 100).toFixed(1)} Qtl</p>
                   <p className="text-xs text-gray-400">{s.warehouse_name}</p>
                 </div>
                 <span className={`badge ${statusBadge(s.status)}`}>{s.status}</span>
@@ -134,7 +135,7 @@ export default function BookingSlot() {
                   <tr key={s.id}>
                     <td className="font-semibold">{s.booking_date}</td>
                     <td>{s.grain_type}</td>
-                    <td>{s.quantity_kg} kg</td>
+                    <td>{(s.quantity_kg / 100).toFixed(1)} Qtl</td>
                     <td><p className="font-medium">{s.warehouse_name}</p></td>
                     <td><span className={`badge ${statusBadge(s.status)}`}>{s.status}</span></td>
                     <td><button onClick={() => setSelectedSlot(s)} className="p-1.5 rounded-lg bg-gray-100 text-gray-500 hover:text-primary-600 hover:bg-primary-50" title="Details"><Eye size={14} /></button></td>
@@ -179,18 +180,16 @@ export default function BookingSlot() {
                   {warehouses.map(w => <option key={w.id} value={w.id}>{t('warehouse_available', { name: w.name, capacity: (w.available_kg / 100).toFixed(0) })}</option>)}
                 </select>
               </div>
-              {form.warehouse_id && (
-                <div>
-                  <label className="label">{t('quantity_kg')} *</label>
-                  <input type="number" value={form.quantity_kg} onChange={e => setForm(f => ({ ...f, quantity_kg: e.target.value }))}
-                    className={`input-field peer ${capacityWarning ? 'input-error' : ''}`} placeholder={t('quantity_in_kg')} min="1" max={available_kg} required />
-                  {capacityWarning && (
-                    <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                      <AlertTriangle size={12} />{t('exceeds_capacity', { capacity: (available_kg / 100).toFixed(1) })}
-                    </p>
-                  )}
-                </div>
-              )}
+              <div>
+                <label className="label">{t('quantity_qtl', 'Quantity (Quintals)')} *</label>
+                <input type="number" value={form.quantity_kg} onChange={e => setForm(f => ({ ...f, quantity_kg: e.target.value }))}
+                  className={`input-field peer ${capacityWarning ? 'input-error' : ''}`} placeholder={t('quantity_in_qtl', 'Quantity in Quintals')} min="0.01" max={available_kg ? available_kg / 100 : undefined} step="0.01" required />
+                {capacityWarning && (
+                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                    <AlertTriangle size={12} />{t('exceeds_capacity', { capacity: (available_kg / 100).toFixed(1) })}
+                  </p>
+                )}
+              </div>
             </form>
             <div className="modal-footer">
               <button onClick={() => setShowModal(false)} className="btn-ghost">{t('cancel')}</button>
@@ -216,7 +215,7 @@ export default function BookingSlot() {
                 <div><p className="text-xs text-gray-500 uppercase">{t('booking_id_upper')}</p><p className="font-medium">#{selectedSlot.id}</p></div>
                 <div><p className="text-xs text-gray-500 uppercase">{t('date_upper')}</p><p className="font-medium">{selectedSlot.booking_date}</p></div>
                 <div><p className="text-xs text-gray-500 uppercase">{t('grain_type_upper')}</p><p className="font-medium">{selectedSlot.grain_type}</p></div>
-                <div><p className="text-xs text-gray-500 uppercase">{t('quantity_upper')}</p><p className="font-medium text-green-600">{selectedSlot.quantity_kg} kg</p></div>
+                <div><p className="text-xs text-gray-500 uppercase">{t('quantity_upper')}</p><p className="font-medium text-green-600">{(selectedSlot.quantity_kg / 100).toFixed(1)} Qtl</p></div>
                 <div><p className="text-xs text-gray-500 uppercase">{t('warehouse_upper')}</p><p className="font-medium">{selectedSlot.warehouse_name}</p></div>
                 <div><p className="text-xs text-gray-500 uppercase">{t('status_upper')}</p><span className={`badge ${statusBadge(selectedSlot.status)}`}>{selectedSlot.status}</span></div>
               </div>

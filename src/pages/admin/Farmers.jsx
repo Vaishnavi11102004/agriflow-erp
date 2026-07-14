@@ -246,7 +246,7 @@ export default function FarmersDirectory() {
         {/* Detail Panel */}
         {selected && (
           <div className="w-full xl:w-80 flex-shrink-0">
-            <div className="glass-card p-5 sticky top-0">
+            <div className="glass-card p-5 sticky top-0 max-h-[calc(100vh-8rem)] overflow-y-auto">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-gray-800">{t("farmer_details")}</h3>
                 <button onClick={() => { setSelected(null); setDetail(null); }} className="btn-icon"><X size={16} /></button>

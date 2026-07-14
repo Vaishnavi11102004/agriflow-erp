@@ -113,7 +113,7 @@ export default function BookingSlots() {
     if (isNaN(good) || isNaN(bad))      return toast.error(t('enter_valid_quantities'));
     if (good < 0 || bad < 0)            return toast.error(t('quantities_cannot_be_negative'));
     const sum = parseFloat((good + bad).toFixed(4));
-    if (Math.abs(sum - total) > 0.01)   return toast.error(`${t('good_bad_must_equal_total')} (${sum} kg / ${total} kg)`);
+    if (Math.abs(sum - total) > 0.01)   return toast.error(`${t('good_bad_must_equal_total')} (${(sum/100).toFixed(1)} Qtl / ${(total/100).toFixed(1)} Qtl)`);
     if (bad > 0 && !inspectForm.rejection_reason) return toast.error(t('select_rejection_reason'));
     setInspectSaving(true);
     try {
@@ -148,7 +148,7 @@ export default function BookingSlots() {
     const total = parseFloat(editYieldSlot.quantity_kg);
     if (isNaN(good) || isNaN(bad) || good < 0 || bad < 0) return toast.error(t('enter_valid_non_negative'));
     const sum = parseFloat((good + bad).toFixed(4));
-    if (Math.abs(sum - total) > 0.01) return toast.error(`Good + Bad (${sum} kg) must equal total (${total} kg)`);
+    if (Math.abs(sum - total) > 0.01) return toast.error(`Good + Bad (${(sum/100).toFixed(1)} Qtl) must equal total (${(total/100).toFixed(1)} Qtl)`);
 
     setEditSaving(true);
     try {
@@ -226,18 +226,18 @@ export default function BookingSlots() {
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
                     <span><span className="font-medium">Date:</span> {s.booking_date}</span>
                     <span><span className="font-medium">Grain:</span> {s.grain_type}</span>
-                    <span className="text-green-600 font-semibold">{s.quantity_kg} kg</span>
+                    <span className="text-green-600 font-semibold">{(s.quantity_kg / 100).toFixed(1)} Qtl</span>
                   </div>
                   {(s.good_quantity_kg !== null && s.good_quantity_kg !== undefined) && (
                     <div className="flex gap-2 text-[10px] font-semibold">
-                      <span className="text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">{t('good_qty_kg', { qty: s.good_quantity_kg })}</span>
-                      {s.bad_quantity_kg > 0 && <span className="text-red-500 bg-red-50 px-1.5 py-0.5 rounded">{t('waste_qty_kg', { qty: s.bad_quantity_kg })}</span>}
+                      <span className="text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">Good: {(s.good_quantity_kg / 100).toFixed(1)} Qtl</span>
+                      {s.bad_quantity_kg > 0 && <span className="text-red-500 bg-red-50 px-1.5 py-0.5 rounded">Waste: {(s.bad_quantity_kg / 100).toFixed(1)} Qtl</span>}
                     </div>
                   )}
                   <p className="text-xs text-gray-500"><span className="font-medium">Warehouse:</span> {s.warehouse_name}</p>
                   <div className="flex gap-1 flex-wrap pt-1">
                     <button onClick={() => setSelectedSlot(s)} className="p-1.5 rounded-lg bg-gray-100 text-gray-500 hover:text-primary-600 hover:bg-primary-50" title={t('view_details')}><Eye size={14} /></button>
-                    {(s.status === 'completed' || s.status === 'Inspection Completed') && (
+                    {(s.status === 'completed' || s.status === 'Inspection Completed') && (new Date() - new Date(s.updated_at || s.created_at) <= 300000) && (
                       <button onClick={() => openEditYield(s)} className="p-1.5 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200" title={t('edit_good_waste_yield')}><Edit2 size={14} /></button>
                     )}
                     {s.status === 'pending' && (<>
@@ -279,11 +279,11 @@ export default function BookingSlots() {
                       </td>
                       <td>
                         <p className="font-medium">{s.grain_type}</p>
-                        <p className="text-xs text-green-600 font-bold">{s.quantity_kg} kg {t('total_lower')}</p>
+                        <p className="text-xs text-green-600 font-bold">{(s.quantity_kg / 100).toFixed(1)} Qtl {t('total_lower')}</p>
                         {(s.good_quantity_kg !== null && s.good_quantity_kg !== undefined) && (
                           <div className="mt-1 flex gap-2 text-[10px] font-semibold">
-                            <span className="text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">{t('good_qty_kg', { qty: s.good_quantity_kg })}</span>
-                            {s.bad_quantity_kg > 0 && <span className="text-red-500 bg-red-50 px-1.5 py-0.5 rounded">{t('waste_qty_kg', { qty: s.bad_quantity_kg })}</span>}
+                            <span className="text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">Good: {(s.good_quantity_kg / 100).toFixed(1)} Qtl</span>
+                            {s.bad_quantity_kg > 0 && <span className="text-red-500 bg-red-50 px-1.5 py-0.5 rounded">Waste: {(s.bad_quantity_kg / 100).toFixed(1)} Qtl</span>}
                           </div>
                         )}
                       </td>
@@ -301,7 +301,7 @@ export default function BookingSlots() {
                           </button>
 
                           {/* Edit Yield (Winnowing) */}
-                          {(s.status === 'completed' || s.status === 'Inspection Completed') && (
+                          {(s.status === 'completed' || s.status === 'Inspection Completed') && (new Date() - new Date(s.updated_at || s.created_at) <= 300000) && (
                             <button onClick={() => openEditYield(s)}
                               className="p-1.5 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200" title={t('edit_good_waste_yield')}>
                               <Edit2 size={14} />
@@ -370,7 +370,7 @@ export default function BookingSlots() {
                 <div><p className="text-xs text-gray-500 uppercase">{t('farmer')}</p><p className="font-medium">{selectedSlot.farmer_name}</p></div>
                 <div><p className="text-xs text-gray-500 uppercase">{t('phone')}</p><p className="font-medium">{selectedSlot.phone}</p></div>
                 <div><p className="text-xs text-gray-500 uppercase">{t('grain_type')}</p><p className="font-medium">{selectedSlot.grain_type}</p></div>
-                <div><p className="text-xs text-gray-500 uppercase">{t('total_quantity')}</p><p className="font-medium text-green-600">{selectedSlot.quantity_kg} kg</p></div>
+                <div><p className="text-xs text-gray-500 uppercase">{t('total_quantity')}</p><p className="font-medium text-green-600">{(selectedSlot.quantity_kg / 100).toFixed(1)} Qtl</p></div>
                 <div><p className="text-xs text-gray-500 uppercase">{t('warehouse')}</p><p className="font-medium">{selectedSlot.warehouse_name}</p></div>
                 <div><p className="text-xs text-gray-500 uppercase">{t('status')}</p><StatusBadge status={selectedSlot.status} /></div>
                 <div className="col-span-2"><p className="text-xs text-gray-500 uppercase">{t('delivery_address')}</p><p className="font-medium text-sm">{selectedSlot.delivery_address}</p></div>
@@ -386,11 +386,11 @@ export default function BookingSlots() {
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div className="flex items-center gap-2 bg-green-100 px-3 py-2 rounded-lg">
                       <ThumbsUp size={14} className="text-green-600" />
-                      <div><p className="text-xs text-green-700 font-medium">{t('good_quality')}</p><p className="font-bold text-green-800">{selectedSlot.good_quantity_kg} kg</p></div>
+                      <div><p className="text-xs text-green-700 font-medium">{t('good_quality')}</p><p className="font-bold text-green-800">{(selectedSlot.good_quantity_kg / 100).toFixed(1)} Qtl</p></div>
                     </div>
                     <div className="flex items-center gap-2 bg-red-100 px-3 py-2 rounded-lg">
                       <ThumbsDown size={14} className="text-red-600" />
-                      <div><p className="text-xs text-red-700 font-medium">{t('rejected')}</p><p className="font-bold text-red-800">{selectedSlot.bad_quantity_kg} kg</p></div>
+                      <div><p className="text-xs text-red-700 font-medium">{t('rejected')}</p><p className="font-bold text-red-800">{(selectedSlot.bad_quantity_kg / 100).toFixed(1)} Qtl</p></div>
                     </div>
                     {selectedSlot.rejection_reason && (
                       <div className="col-span-2">
@@ -427,7 +427,7 @@ export default function BookingSlots() {
                 </div>
                 <div>
                   <h3 className="font-bold text-gray-800">{t('crop_inspection')}</h3>
-                  <p className="text-xs text-gray-500">{inspectSlot.farmer_name} · {inspectSlot.grain_type} · {inspectSlot.quantity_kg} kg total</p>
+                  <p className="text-xs text-gray-500">{inspectSlot.farmer_name} · {inspectSlot.grain_type} · {(inspectSlot.quantity_kg / 100).toFixed(1)} Qtl total</p>
                 </div>
               </div>
               {!inspectSaving && <button onClick={() => setInspectSlot(null)} className="btn-icon"><X size={18} /></button>}
@@ -438,11 +438,11 @@ export default function BookingSlots() {
               <div className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
                 inspectValid ? 'bg-green-50 border-green-200 text-green-700' : 'bg-amber-50 border-amber-200 text-amber-700'
               }`}>
-                <span>{t('total_received')}: <strong>{inspectSlot.quantity_kg} kg</strong></span>
+                <span>{t('total_received')}: <strong>{(inspectSlot.quantity_kg / 100).toFixed(1)} Qtl</strong></span>
                 <span>
-                  {t('entered')}: <strong>{inspectSum} kg</strong>
+                  {t('entered')}: <strong>{(inspectSum / 100).toFixed(1)} Qtl</strong>
                   {!inspectValid && inspectSum > 0 && (
-                    <span className="ml-2 text-xs text-red-500">({inspectSum > inspectTotal ? '+' : ''}{(inspectSum - inspectTotal).toFixed(2)} kg)</span>
+                    <span className="ml-2 text-xs text-red-500">({inspectSum > inspectTotal ? '+' : ''}{((inspectSum - inspectTotal) / 100).toFixed(2)} Qtl)</span>
                   )}
                 </span>
               </div>
@@ -544,10 +544,10 @@ export default function BookingSlots() {
                   <div className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
                     ok ? 'bg-green-50 border-green-200 text-green-700' : 'bg-amber-50 border-amber-200 text-amber-700'
                   }`}>
-                    <span>Total: <strong>{tot} kg</strong></span>
-                    <span>Entered: <strong>{sum} kg</strong>
+                    <span>Total: <strong>{(tot/100).toFixed(1)} Qtl</strong></span>
+                    <span>Entered: <strong>{(sum/100).toFixed(1)} Qtl</strong>
                       {!ok && sum > 0 && (
-                        <span className="ml-2 text-xs text-red-500">({sum > tot ? '+' : ''}{(sum - tot).toFixed(2)} kg)</span>
+                        <span className="ml-2 text-xs text-red-500">({sum > tot ? '+' : ''}{((sum - tot)/100).toFixed(2)} Qtl)</span>
                       )}
                     </span>
                   </div>
@@ -569,7 +569,7 @@ export default function BookingSlots() {
                 {(() => {
                   const g = parseFloat(editYieldForm.good_quantity_kg) || 0;
                   const tot = parseFloat(editYieldSlot.quantity_kg) || 0;
-                  return g > tot ? <p className="text-xs text-red-500 mt-1">Cannot exceed total ({tot} kg)</p> : null;
+                  return g > tot ? <p className="text-xs text-red-500 mt-1">Cannot exceed total ({(tot/100).toFixed(1)} Qtl)</p> : null;
                 })()}
               </div>
 
@@ -588,7 +588,7 @@ export default function BookingSlots() {
                 {(() => {
                   const b = parseFloat(editYieldForm.bad_quantity_kg) || 0;
                   const tot = parseFloat(editYieldSlot.quantity_kg) || 0;
-                  return b > tot ? <p className="text-xs text-red-500 mt-1">Cannot exceed total ({tot} kg)</p> : null;
+                  return b > tot ? <p className="text-xs text-red-500 mt-1">Cannot exceed total ({(tot/100).toFixed(1)} Qtl)</p> : null;
                 })()}
               </div>
             </form>
@@ -652,7 +652,7 @@ export default function BookingSlots() {
                             {isFull ? <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded">{t('full')}</span> :
                              <span className="text-[10px] font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded">{t('availability')}</span>}
                           </div>
-                          <span className="text-xs text-gray-500">{t('kg_available_count', { count: available_kg.toFixed(0) })}</span>
+                          <span className="text-xs text-gray-500">{(available_kg / 100).toFixed(1)} Qtl available</span>
                         </button>
                       );
                     })}

@@ -63,6 +63,8 @@ export default function NotificationCenter() {
   };
 
   const handleAction = async (notif, approve) => {
+    // Close the detail modal immediately so the user sees feedback right away
+    setSelectedNotif(null);
     try {
       const adminId = user.id;
       if (notif.reference_type === 'farmer') {
@@ -73,14 +75,14 @@ export default function NotificationCenter() {
         await managerService.updateBookingStatus(notif.reference_id, approve ? 'confirmed' : 'cancelled', null, user.name, adminId);
       } else if (notif.reference_type === 'seed_purchase') {
         await adminService.updateSeedPurchaseStatus(notif.reference_id, approve ? 'paid' : 'failed', adminId);
+      } else if (notif.reference_type === 'grain_sale') {
+        await managerService.reviewGrainSale(notif.reference_id, approve ? 'approved' : 'rejected', null, adminId);
       }
 
-      // Mark this specific notification as read
+      // Mark this specific notification as read locally
       await markOneRead(notif.id);
-      queryClient.invalidateQueries({ queryKey: notifKey });
-      if (selectedNotif && selectedNotif.id === notif.id) {
-        setSelectedNotif(null);
-      }
+      // Refetch notifications to pick up shared read state changes from the backend
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     } catch (err) {
       console.error('Failed to process action', err);
     }
@@ -191,7 +193,7 @@ export default function NotificationCenter() {
               <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">{selectedNotif.message}</p>
             </div>
             
-            {(user?.role === 'super_admin' || (user?.role === 'manager' && selectedNotif.reference_type !== 'bank_request')) && 
+            {(user?.role === 'super_admin' || user?.role === 'admin' || (user?.role === 'manager' && selectedNotif.reference_type !== 'bank_request')) && 
              selectedNotif.reference_type && selectedNotif.reference_id && !selectedNotif.is_read && (
               <div className="p-5 border-t border-gray-100 bg-gray-50 flex gap-3">
                 <button

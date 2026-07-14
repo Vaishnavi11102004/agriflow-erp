@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import ledgerService from '../../services/ledgerService';
 import adminService from '../../services/adminService';
 import { useAuth } from '../../context/AuthContext';
-import { Search, DollarSign, Plus, X, UserPlus, Pencil } from 'lucide-react';
+import { Search, IndianRupee, Plus, X, UserPlus, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function CreditsAdmin() {
@@ -120,7 +120,7 @@ export default function CreditsAdmin() {
             <Plus size={16} /> Add Entry
           </button>
           <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center">
-            <DollarSign size={24} className="text-green-600" />
+            <IndianRupee size={24} className="text-green-600" />
           </div>
         </div>
       </div>

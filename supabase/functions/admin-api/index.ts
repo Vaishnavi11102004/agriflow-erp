@@ -308,6 +308,8 @@ serve(async (req) => {
           entity_type: 'seed_purchase', entity_id: purchaseId, details: `Payment status changed to ${status}`,
         });
       }
+      // Always sync notification read state for all users
+      await supabase.from('notifications').update({ is_read: true }).eq('reference_type', 'seed_purchase').eq('reference_id', purchaseId);
       return new Response(JSON.stringify({ message: 'Purchase updated' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 

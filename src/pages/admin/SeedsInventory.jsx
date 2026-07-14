@@ -60,7 +60,7 @@ export default function SeedsInventory() {
 
   const openAdd = () => { setForm(defaultForm); setInitialForm(defaultForm); setShowModal(true); };
   const openEdit = (s) => {
-    const editState = { ...s, is_active: s.is_active ? 1 : 0, warehouse_ids: (s.warehouses || []).map(w => w.id) };
+    const editState = { ...s, stock_kg: s.stock_kg / 100, is_active: s.is_active ? 1 : 0, warehouse_ids: (s.warehouses || []).map(w => w.id) };
     setForm(editState);
     setInitialForm(editState);
     setShowModal(true);
@@ -84,7 +84,7 @@ export default function SeedsInventory() {
     e.preventDefault();
     setSaving(true);
     try {
-      const payload = { ...form, price_per_kg: parseFloat(form.price_per_kg), stock_kg: parseFloat(form.stock_kg), warehouse_ids: form.warehouse_ids.map(Number), is_active: form.is_active ? 1 : 0, image_url: form.image_url || null };
+      const payload = { ...form, price_per_kg: parseFloat(form.price_per_kg), stock_kg: parseFloat(form.stock_kg) * 100, warehouse_ids: form.warehouse_ids.map(Number), is_active: form.is_active ? 1 : 0, image_url: form.image_url || null };
       if (form.id) await adminService.updateSeed(form.id, payload);
       else await adminService.createSeed(payload);
       toast.success(form.id ? t('seed_updated') : t('seed_added'));
@@ -100,7 +100,7 @@ export default function SeedsInventory() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div><h1 className="page-title">{t('seeds_inventory')}</h1><p className="page-subtitle">{t("seeds_inventory_desc")}</p></div>
-        {(user?.role === 'super_admin' || user?.role === 'admin') && (
+        {(user?.role === 'super_admin' || user?.role === 'admin' || user?.role === 'manager') && (
           <button onClick={openAdd} className="btn-primary flex items-center gap-2"><Plus size={16} />{t("add_seed")}</button>
         )}
       </div>
@@ -128,9 +128,9 @@ export default function SeedsInventory() {
                   </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
                     <span className="font-bold text-agro-green">₹{s.price_per_kg}/kg</span>
-                    <span className={s.stock_kg < 500 ? 'text-red-500 font-bold' : ''}>{s.stock_kg.toLocaleString()} kg stock</span>
+                    <span className={s.stock_kg < 500 ? 'text-red-500 font-bold' : ''}>{(s.stock_kg / 100).toLocaleString('en-IN')} Qtl stock</span>
                     {s.stock_kg < 500 && <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded uppercase">{t('low')}</span>}
-                    <span className="text-amber-600 font-semibold">{Number(s.on_hold_kg || 0).toLocaleString()} kg on hold</span>
+                    <span className="text-amber-600 font-semibold">{((s.on_hold_kg || 0) / 100).toLocaleString('en-IN')} Qtl on hold</span>
                   </div>
                   {s.warehouses && s.warehouses.length > 0 && (
                     <div className="flex flex-wrap gap-1">{s.warehouses.map(w => <span key={w.id} className="badge-blue text-[10px]">{w.name}</span>)}</div>
@@ -147,7 +147,7 @@ export default function SeedsInventory() {
         <div className="hidden sm:block table-container">
           <table className="data-table">
             <thead><tr>
-              <th>{t("seed_name")}</th><th>{t("variety")}</th><th>{t("price_per_kg")}</th><th>{t("stock_kg")}</th><th>{t("on_hold", "On Hold")}</th><th>{t("warehouse", "Warehouse")}</th><th>{t("status")}</th><th>{t("actions")}</th>
+              <th>{t("seed_name")}</th><th>{t("variety")}</th><th>{t("price_per_kg")}</th><th>{t("stock_qtl", "Stock (Quintals)")}</th><th>{t("on_hold", "On Hold")}</th><th>{t("warehouse", "Warehouse")}</th><th>{t("status")}</th><th>{t("actions")}</th>
             </tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={8} className="text-center py-10"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto" /></td></tr>
@@ -159,12 +159,12 @@ export default function SeedsInventory() {
                       <td className="font-bold text-agro-green">₹{s.price_per_kg}</td>
                       <td>
                         <div className="flex items-center gap-2">
-                          <span className={s.stock_kg < 500 ? 'text-red-500 font-bold' : ''}>{s.stock_kg.toLocaleString()}</span>
+                          <span className={s.stock_kg < 500 ? 'text-red-500 font-bold' : ''}>{(s.stock_kg / 100).toLocaleString('en-IN')}</span>
                           {s.stock_kg < 500 && <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded uppercase">{t("low")}</span>}
                         </div>
                       </td>
                       <td>
-                        <span className="font-semibold text-amber-600">{Number(s.on_hold_kg || 0).toLocaleString()} kg</span>
+                        <span className="font-semibold text-amber-600">{((s.on_hold_kg || 0) / 100).toLocaleString('en-IN')} Qtl</span>
                       </td>
                       <td>{s.warehouses && s.warehouses.length > 0
                         ? <div className="flex flex-wrap gap-1">{s.warehouses.map(w => <span key={w.id} className="badge-blue text-[10px]">{w.name}</span>)}</div>
@@ -199,28 +199,27 @@ export default function SeedsInventory() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="label">{t("seed_name")} *</label>
-                  <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={`input-field ${user?.role === 'manager' ? 'bg-gray-100 cursor-not-allowed' : ''}`} disabled={user?.role === 'manager'} required />
+                  <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="input-field" required />
                 </div>
                 <div>
                   <label className="label">{t("variety")}</label>
-                  <input value={form.variety} onChange={e => setForm(f => ({ ...f, variety: e.target.value }))} className={`input-field ${user?.role === 'manager' ? 'bg-gray-100 cursor-not-allowed' : ''}`} disabled={user?.role === 'manager'} />
+                  <input value={form.variety} onChange={e => setForm(f => ({ ...f, variety: e.target.value }))} className="input-field" />
                 </div>
                 <div>
                   <label className="label">
-                    Price/kg (₹) * {user?.role === 'manager' && form.id && <span className="text-red-500 font-normal ml-1">{t("admin_only")}</span>}
+                    Price/kg (₹) *
                   </label>
                   <input
                     type="number"
                     value={form.price_per_kg}
                     onChange={e => setForm(f => ({ ...f, price_per_kg: e.target.value }))}
-                    className={`input-field ${user?.role === 'manager' && form.id ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                    className="input-field"
                     step="0.5"
                     min="1"
                     required
-                    disabled={user?.role === 'manager' && !!form.id}
                   />
                 </div>
-                <div><label className="label">{t("stock_kg")} *</label><input type="number" value={form.stock_kg} onChange={e => setForm(f => ({ ...f, stock_kg: e.target.value }))} className="input-field" step="1" min="1" required /></div>
+                <div><label className="label">{t("stock_qtl", "Stock (Quintals)")} *</label><input type="number" value={form.stock_kg} onChange={e => setForm(f => ({ ...f, stock_kg: e.target.value }))} className="input-field" step="0.1" min="0.1" required /></div>
                 <div>
                   <label className="label">{t("warehouse", "Warehouse")}</label>
                   <div className="border border-gray-200 rounded-xl p-3 max-h-36 overflow-y-auto space-y-2">
@@ -256,7 +255,7 @@ export default function SeedsInventory() {
                     <button type="button" onClick={() => { setForm(f => ({ ...f, image_url: '' })); if (fileInputRef.current) fileInputRef.current.value = ''; }} className="absolute top-1 right-1 bg-white rounded-full p-0.5 shadow border border-gray-200"><X size={14} /></button>
                   </div>
                 ) : (
-                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadingImage || user?.role === 'manager'}
+                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadingImage}
                     className="w-full h-24 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-1 text-gray-400 hover:border-primary-400 hover:text-primary-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                     {uploadingImage ? <span className="w-5 h-5 border-2 border-primary-300 border-t-primary-600 rounded-full animate-spin" /> : <><ImagePlus size={20} /><span className="text-xs">Click to upload image</span></>}
                   </button>
@@ -264,11 +263,11 @@ export default function SeedsInventory() {
               </div>
               <div>
                 <label className="label">{t("description")}</label>
-                <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className={`input-field min-h-[80px] ${user?.role === 'manager' ? 'bg-gray-100 cursor-not-allowed' : ''}`} disabled={user?.role === 'manager'} />
+                <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="input-field min-h-[80px]" />
               </div>
               <label className="flex items-center gap-2 mt-2">
-                <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" disabled={user?.role === 'manager'} />
-                <span className={`text-sm ${user?.role === 'manager' ? 'text-gray-400' : 'text-gray-700'}`}>{t("active_visible_to_farmers")}</span>
+                <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                <span className="text-sm text-gray-700">{t("active_visible_to_farmers")}</span>
               </label>
             </form>
             <div className="modal-footer">

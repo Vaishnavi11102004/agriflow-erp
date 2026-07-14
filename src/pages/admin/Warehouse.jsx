@@ -7,9 +7,11 @@ import { Warehouse, Plus, X, CheckCircle, PackageSearch } from 'lucide-react';
 import toast from 'react-hot-toast';
 import validators from '../../utils/validators';
 import FieldError from '../../components/shared/FieldError';
+import { useAuth } from '../../context/AuthContext';
 
 export default function WarehouseManagement() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -67,7 +69,7 @@ export default function WarehouseManagement() {
     if (hasErrors) return;
     setSaving(true);
     try {
-      await warehouseService.createWarehouse({ ...form, total_capacity_kg: parseFloat(form.total_capacity_kg) });
+      await warehouseService.createWarehouse({ ...form, total_capacity_kg: parseFloat(form.total_capacity_kg) * 100 });
       toast.success(t('warehouse_created'));
       setShowModal(false);
       queryClient.invalidateQueries({ queryKey: ['admin-warehouses'] });
@@ -88,7 +90,7 @@ export default function WarehouseManagement() {
     try {
       await warehouseService.addInventory(selectedInventory.id, {
         grain_type: finalGrainType,
-        quantity_kg: parseFloat(invForm.quantity_kg)
+        quantity_kg: parseFloat(invForm.quantity_kg) * 100
       });
       toast.success('Inventory added');
       setShowInvModal(false);
@@ -107,7 +109,7 @@ export default function WarehouseManagement() {
       await warehouseService.createSlot({
         warehouse_id: selectedInventory.id,
         ...slotForm,
-        total_capacity_kg: parseFloat(slotForm.total_capacity_kg)
+        total_capacity_kg: parseFloat(slotForm.total_capacity_kg) * 100
       });
       toast.success('Time slot created');
       setShowSlotModal(false);
@@ -121,9 +123,11 @@ export default function WarehouseManagement() {
     <div className="animate-fade-in">
       <div className="page-header">
         <div><h1 className="page-title">{t('warehouse')}</h1><p className="page-subtitle">{t("warehouse_desc")}</p></div>
-        <button onClick={() => { setForm({ name: '', address: '', total_capacity_kg: '' }); setFieldErrors({}); setShowModal(true); }} className="btn-primary flex items-center gap-2">
-          <Plus size={16} />{t('add_warehouse')}
-        </button>
+        {(user?.role === 'super_admin' || user?.role === 'admin') && (
+          <button onClick={() => { setForm({ name: '', address: '', total_capacity_kg: '' }); setFieldErrors({}); setShowModal(true); }} className="btn-primary flex items-center gap-2">
+            <Plus size={16} />{t('add_warehouse')}
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -174,7 +178,7 @@ export default function WarehouseManagement() {
                         <p className="text-[10px] text-gray-500">{t("updated")}: {new Date(inv.last_updated).toLocaleDateString()}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-primary-700">{inv.quantity_kg.toLocaleString('en-IN')} Quintals</p>
+                        <p className="font-bold text-primary-700">{(inv.quantity_kg / 100).toLocaleString('en-IN')} Quintals</p>
                         <p className="text-[10px] text-gray-500">{((inv.quantity_kg / selectedInventory.total_capacity_kg) * 100).toFixed(1)}% of total cap</p>
                       </div>
                     </div>
@@ -197,7 +201,7 @@ export default function WarehouseManagement() {
                             <p className="text-xs text-gray-500">{slot.start_time} - {slot.end_time}</p>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold text-gray-800">{slot.booked_capacity_kg} / {slot.total_capacity_kg} Quintals</p>
+                            <p className="font-bold text-gray-800">{(slot.booked_capacity_kg / 100).toFixed(1)} / {(slot.total_capacity_kg / 100).toFixed(1)} Quintals</p>
                             <p className="text-[10px] text-gray-500">{pct.toFixed(1)}% booked</p>
                           </div>
                         </div>
