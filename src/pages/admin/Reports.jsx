@@ -104,7 +104,7 @@ export default function Reports() {
         const total = rows.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0);
         return {
           columns: ['Farmer', 'Seed', 'Qty (Quintals)', 'Price/kg', 'Total Amount', 'Payment', 'Date'],
-          rows: rows.map(s => [s.farmer_name || '-', s.seed_name || '-', s.quantity_kg || 0, `Rs. ${s.price_per_kg || 0}`, `Rs. ${s.total_amount || 0}`, s.payment_status, s.created_at ? new Date(s.created_at).toLocaleDateString('en-IN') : '-']),
+          rows: rows.map(s => [s.farmer_name || '-', s.seed_name || '-', ((s.quantity_kg || 0) / 100).toFixed(2), `Rs. ${s.price_per_kg || 0}`, `Rs. ${s.total_amount || 0}`, s.payment_status, s.created_at ? new Date(s.created_at).toLocaleDateString('en-IN') : '-']),
           summary: [`Total Purchases: ${rows.length}`, `Total Amount: Rs. ${total.toLocaleString('en-IN')}`],
         };
       }
@@ -113,7 +113,7 @@ export default function Reports() {
         const total = rows.reduce((sum, g) => sum + parseFloat(g.total_amount || 0), 0);
         return {
           columns: ['Farmer', 'Grain', 'Grade', 'Good Qty (Quintals)', 'Price/kg', 'Total Amount', 'Status', 'Date'],
-          rows: rows.map(g => [g.farmer_name || '-', g.grain_type || '-', g.grade || '-', g.good_material_kg || 0, `Rs. ${g.price_per_kg || 0}`, `Rs. ${g.total_amount || 0}`, g.status, g.created_at ? new Date(g.created_at).toLocaleDateString('en-IN') : '-']),
+          rows: rows.map(g => [g.farmer_name || '-', g.grain_type || '-', g.grade || '-', ((g.good_material_kg || 0) / 100).toFixed(2), `Rs. ${g.price_per_kg || 0}`, `Rs. ${g.total_amount || 0}`, g.status, g.created_at ? new Date(g.created_at).toLocaleDateString('en-IN') : '-']),
           summary: [`Total Sales: ${rows.length}`, `Total Amount: Rs. ${total.toLocaleString('en-IN')}`],
         };
       }

@@ -53,6 +53,23 @@ serve(async (req) => {
       }).select('id').single();
       if (error) throw error;
       await supabase.from('farmer_profiles').update({ bank_status: 'pending' }).eq('user_id', bankForm.farmer_id);
+
+      const { data: admins } = await supabase.from('users').select('id').in('role', ['admin', 'manager', 'super_admin']);
+      if (admins && admins.length > 0) {
+        // Get farmer name for the notification message
+        const { data: farmerProfile } = await supabase.from('users').select('name').eq('id', bankForm.farmer_id).maybeSingle();
+        const farmerName = farmerProfile?.name || 'A farmer';
+        const notifications = admins.map((admin: any) => ({
+          user_id: admin.id,
+          title: 'Bank Change Request',
+          message: `${farmerName} has requested to change their bank details.`,
+          type: 'bank_change',
+          reference_type: 'bank_request',
+          reference_id: data.id
+        }));
+        await supabase.from('notifications').insert(notifications);
+      }
+
       return new Response(JSON.stringify({ message: 'Bank change request submitted for admin approval', id: data.id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -95,6 +112,11 @@ serve(async (req) => {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+
+      // Manager/Super Admin notifications for this purchase are created inside the
+      // purchase_seeds() DB function (in Quintals, for every payment method) so we
+      // don't insert a second, duplicate notification here.
+
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -148,6 +170,10 @@ serve(async (req) => {
         farmer_id: farmerId, grain_sale_id: grain_sale_id || null, booking_date, delivery_address, grain_type, warehouse_id, quantity_kg: parseFloat(quantity_kg), status: 'pending'
       }).select('id').single();
       if (error) throw error;
+
+      // Notifications are created by the DB trigger (notify_on_booking_slot) which
+      // fires on INSERT and already includes reference_type/reference_id for shared read state.
+
       return new Response(JSON.stringify({ id: data.id, message: 'Booking slot created. Awaiting confirmation.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 

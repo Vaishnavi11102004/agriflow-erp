@@ -66,12 +66,12 @@ export default function SeedPurchase() {
 
   const openBuy = (seed) => { setSelected(seed); setForm({ quantity_kg: '', payment_method: 'upi', upi_id: '', transaction_id: '', warehouse_id: '' }); setUpiTouched(false); setUpiSubmitError(false); setShowModal(true); };
 
-  const quantityExceedsStock = selected && form.quantity_kg && parseFloat(form.quantity_kg) > selected.stock_kg;
+  const quantityExceedsStock = selected && form.quantity_kg && parseFloat(form.quantity_kg) * 100 > selected.stock_kg;
 
   const handlePurchase = async (e) => {
     e.preventDefault();
     if (!form.quantity_kg || parseFloat(form.quantity_kg) <= 0) return toast.error(t('enter_valid_quantity'));
-    if (parseFloat(form.quantity_kg) > selected.stock_kg) return toast.error(t('quantity_exceeds_stock', `Quantity exceeds available stock (${selected.stock_kg} kg)`));
+    if (parseFloat(form.quantity_kg) * 100 > selected.stock_kg) return toast.error(t('quantity_exceeds_stock', `Quantity exceeds available stock (${(selected.stock_kg / 100).toFixed(1)} Qtl)`));
     if (form.payment_method === 'upi') {
       if (!/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(form.upi_id)) {
         setUpiSubmitError(true);
@@ -83,14 +83,14 @@ export default function SeedPurchase() {
       const data = await farmerService.purchaseSeeds({
         farmer_id: user?.id,
         seed_id: selected.id,
-        quantity_kg: parseFloat(form.quantity_kg),
+        quantity_kg: parseFloat(form.quantity_kg) * 100,
         payment_method: form.payment_method,
         upi_id: form.payment_method === 'upi' ? form.upi_id : null,
         transaction_id: form.payment_method === 'upi' ? form.transaction_id : null,
         warehouse_id: form.warehouse_id ? Number(form.warehouse_id) : null,
       });
       // Build invoice HTML for modal display
-      const invoiceData = { ...data, seed_name: selected.name, variety: selected.variety, price_per_kg: selected.price_per_kg, quantity_kg: parseFloat(form.quantity_kg) };
+      const invoiceData = { ...data, seed_name: selected.name, variety: selected.variety, price_per_kg: selected.price_per_kg, quantity_kg: parseFloat(form.quantity_kg) * 100 };
       setInvoiceHtml(generateInvoiceHtml(invoiceData));
       setShowModal(false);
       setShowInvoiceModal(true);
@@ -150,9 +150,9 @@ export default function SeedPurchase() {
         <tbody>
             <tr>
                 <td><strong>${p.seed_name}</strong><br><span style="color: #64748b; font-size: 13px;">Variety: ${p.variety || '-'}</span></td>
-                <td>${p.quantity_kg} kg</td>
-                <td>₹${p.price_per_kg}</td>
-                <td style="text-align: right; font-weight: 600;">₹${(p.total_amount || p.quantity_kg * p.price_per_kg).toLocaleString('en-IN')}</td>
+                <td>${(p.quantity_kg / 100.0).toFixed(2)} Qtl</td>
+                <td>₹${p.price_per_kg * 100}/Qtl</td>
+                <td style="text-align: right; font-weight: 600;">₹${(p.total_amount || (p.quantity_kg / 100.0) * (p.price_per_kg * 100)).toLocaleString('en-IN')}</td>
             </tr>
         </tbody>
     </table>
@@ -220,8 +220,8 @@ export default function SeedPurchase() {
         <tbody>
             <tr>
                 <td><strong>${p.seed_name}</strong><br><span style="color: #64748b; font-size: 13px;">Variety: ${p.variety}</span></td>
-                <td>${p.quantity_kg} kg</td>
-                <td>₹${p.price_per_kg}</td>
+                <td>${(p.quantity_kg / 100.0).toFixed(2)} Qtl</td>
+                <td>₹${p.price_per_kg * 100}/Qtl</td>
                 <td style="text-align: right; font-weight: 600;">₹${p.total_amount.toLocaleString('en-IN')}</td>
             </tr>
         </tbody>
@@ -261,7 +261,7 @@ export default function SeedPurchase() {
     return matchesSearch && matchesCrop && matchesPrice && matchesStock && matchesWarehouse;
   });
 
-  const total = form.quantity_kg && selected ? (parseFloat(form.quantity_kg) * selected.price_per_kg).toFixed(2) : '0.00';
+  const total = form.quantity_kg && selected ? (parseFloat(form.quantity_kg) * 100 * selected.price_per_kg).toFixed(2) : '0.00';
 
   const filteredPurchases = purchases.filter(p => {
     if (historyTimeFilter === 'all') return true;
@@ -415,14 +415,14 @@ export default function SeedPurchase() {
                         </div>
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 sm:mb-4 gap-1">
                           <div>
-                            <p className="text-lg sm:text-2xl font-bold text-agro-green">₹{seed.price_per_kg}<span className="text-[10px] sm:text-sm text-gray-400 font-normal">/kg</span></p>
+                            <p className="text-lg sm:text-2xl font-bold text-agro-green">₹{seed.price_per_kg * 100}<span className="text-[10px] sm:text-sm text-gray-400 font-normal">/Qtl</span></p>
                           </div>
                           <div className="text-left sm:text-right">
                             <p className="text-[10px] sm:text-xs text-gray-500 hidden sm:block">{t('available')}</p>
-                            <p className="text-[10px] sm:text-sm font-semibold text-gray-700">{seed.stock_kg.toLocaleString()} kg left</p>
+                            <p className="text-[10px] sm:text-sm font-semibold text-gray-700">{(seed.stock_kg / 100).toLocaleString('en-IN')} Qtl left</p>
                             {Number(seed.on_hold_kg) > 0 && (
                               <p className="text-[9px] sm:text-[10px] font-medium text-amber-600 mt-0.5">
-                                ON HOLD: {Number(seed.on_hold_kg).toLocaleString()} kg
+                                ON HOLD: {(Number(seed.on_hold_kg) / 100).toLocaleString('en-IN')} Qtl
                               </p>
                             )}
                           </div>
@@ -469,7 +469,7 @@ export default function SeedPurchase() {
                     <span className={`badge ${p.payment_status === 'paid' ? 'badge-green' : p.payment_status === 'failed' ? 'badge-red' : 'badge-yellow'}`}>{p.payment_status === 'pending' ? t('pay_at_warehouse') : p.payment_status}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">{p.quantity_kg} kg × ₹{p.price_per_kg}</span>
+                    <span className="text-gray-500">{(p.quantity_kg / 100).toFixed(2)} Qtl</span>
                     <span className="font-bold text-gray-800">₹{p.total_amount.toLocaleString('en-IN')}</span>
                   </div>
                   <span className="text-xs text-gray-400">{new Date(p.created_at).toLocaleDateString('en-IN')}</span>
@@ -490,7 +490,7 @@ export default function SeedPurchase() {
                   : filteredPurchases.map(p => (
                     <tr key={p.id}>
                       <td><p className="font-semibold">{p.seed_name}</p><p className="text-xs text-gray-400">{p.variety}</p></td>
-                      <td>{p.quantity_kg} kg</td>
+                      <td>{(p.quantity_kg / 100).toFixed(2)} Qtl</td>
                       <td>₹{p.price_per_kg}</td>
                       <td className="font-bold text-gray-800">₹{p.total_amount.toLocaleString('en-IN')}</td>
                       <td className="text-xs">{p.upi_id || '-'}</td>
@@ -525,24 +525,24 @@ export default function SeedPurchase() {
             <div className="modal-header">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center text-xl">🌱</div>
-                <div><h3 className="font-bold text-gray-800">{t('purchase')} {selected.name}</h3><p className="text-xs text-gray-500">₹{selected.price_per_kg}/kg</p></div>
+                <div><h3 className="font-bold text-gray-800">{t('purchase')} {selected.name}</h3><p className="text-xs text-gray-500">₹{selected.price_per_kg * 100}/Qtl</p></div>
               </div>
               <button onClick={() => setShowModal(false)} className="btn-icon"><X size={18} /></button>
             </div>
             <form onSubmit={handlePurchase} className="modal-body space-y-4">
               <div>
-                <label className="label">{t('quantity_kg')} *</label>
+                <label className="label">{t('quantity_qtl', 'Quantity (Quintals)')} *</label>
                 <input type="number" value={form.quantity_kg} onChange={e => setForm(f => ({ ...f, quantity_kg: e.target.value }))}
-                  className={`input-field ${quantityExceedsStock ? 'border-red-400 ring-1 ring-red-400' : ''}`} placeholder={t('quantity_kg_placeholder')} min="1" max={selected.stock_kg} step="0.5" required />
+                  className={`input-field ${quantityExceedsStock ? 'border-red-400 ring-1 ring-red-400' : ''}`} placeholder={t('quantity_qtl_placeholder', 'Enter quantity in Quintals')} min="0.1" max={selected.stock_kg / 100} step="0.1" required />
                 <p className={`text-xs mt-1 ${quantityExceedsStock ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>
-                  {quantityExceedsStock ? `⚠ ${t('quantity_exceeds_stock', 'Quantity exceeds available stock!')} ` : ''}{t('max_available')}: {selected.stock_kg} kg
+                  {quantityExceedsStock ? `⚠ ${t('quantity_exceeds_stock', 'Quantity exceeds available stock!')} ` : ''}{t('max_available')}: {(selected.stock_kg / 100).toFixed(1)} Qtl
                 </p>
               </div>
               {form.quantity_kg && !quantityExceedsStock && (
                 <div className="p-4 bg-primary-50 rounded-xl border border-primary-100">
                   <p className="text-sm font-semibold text-gray-700">{t('order_summary')}</p>
                   <div className="flex justify-between mt-2 text-sm">
-                    <span className="text-gray-500">{form.quantity_kg} kg × ₹{selected.price_per_kg}</span>
+                    <span className="text-gray-500">{form.quantity_kg} Qtl × ₹{selected.price_per_kg * 100}/Qtl</span>
                     <span className="font-bold text-agro-green text-lg">₹{total}</span>
                   </div>
                 </div>
@@ -708,7 +708,7 @@ export default function SeedPurchase() {
             </div>
             <div className="space-y-2 text-sm">
               {[
-                [t('quantity'), `${selectedPurchase.quantity_kg} kg`],
+                [t('quantity'), `${(selectedPurchase.quantity_kg / 100).toFixed(2)} Qtl`],
                 [t('price_per_kg'), `₹${selectedPurchase.price_per_kg}`],
                 [t('total_amount'), `₹${parseFloat(selectedPurchase.total_amount).toLocaleString('en-IN')}`],
                 [t('date'), new Date(selectedPurchase.created_at).toLocaleString('en-IN')],

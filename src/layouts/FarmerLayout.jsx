@@ -47,8 +47,7 @@ export default function FarmerLayout() {
     { to: '/farmer/profile', icon: <LayoutDashboard size={18} />, label: 'Account Details', end: false },
     { to: '/farmer/crops', icon: <Sprout size={18} />, label: t('crops_cycles') },
     { to: '/farmer/seeds', icon: <ShoppingCart size={18} />, label: t('seed_purchase') },
-    { to: '/farmer/booking-slots', icon: <Calendar size={18} />, label: t('booking_slot') },
-    { to: '/farmer/grain-sales', icon: <Wheat size={18} />, label: t('grain_sales') },
+    { to: '/farmer/booking-slots', icon: <Wheat size={18} />, label: t('grain_sales') },
     { to: '/farmer/transactions', icon: <History size={18} />, label: t('transaction_history') },
   ];
 
@@ -165,7 +164,7 @@ export default function FarmerLayout() {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0 pb-16 md:pb-0">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
         {/* Topbar */}
         <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center gap-3 flex-shrink-0 shadow-sm z-30">
           <button onClick={() => setSidebarOpen(v => !v)} className="btn-icon flex-shrink-0 hidden md:flex">
@@ -221,7 +220,7 @@ export default function FarmerLayout() {
       </div>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex items-center justify-around z-40 h-16 shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.05)] safe-area-pb px-1">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex items-stretch z-40 min-h-16 shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.05)] pb-[env(safe-area-inset-bottom)] px-1">
         {(() => {
           const mobileItems = [
             navItems.find(i => i.to === '/farmer/seeds'),
@@ -229,16 +228,16 @@ export default function FarmerLayout() {
             navItems.find(i => i.to === '/farmer/booking-slots'),
             { ...navItems.find(i => i.to === '/farmer/profile'), label: 'Profile & Txns' }
           ].filter(Boolean);
-          
+
           return mobileItems.map(item => (
             <NavLink key={item.to} to={item.to} end={item.end}
-              className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full gap-1 transition-all ${isActive ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'}`}>
+              className={({ isActive }) => `flex-1 min-w-0 flex flex-col items-center justify-center h-full gap-1 transition-all ${isActive ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'}`}>
               {({ isActive }) => (
                 <>
                   <div className={`relative flex items-center justify-center w-10 h-8 rounded-full transition-all ${isActive ? 'bg-primary-100/50 scale-110' : ''}`}>
                     {isActive ? React.cloneElement(item.icon, { size: 20, className: 'text-primary-600 font-bold drop-shadow-sm' }) : React.cloneElement(item.icon, { size: 18 })}
                   </div>
-                  <span className={`text-[9px] sm:text-[10px] leading-tight truncate w-full text-center px-1 font-medium ${isActive ? 'font-bold text-primary-700' : ''}`}>{item.label}</span>
+                  <span className={`text-[9px] leading-tight truncate w-full text-center px-1 font-medium ${isActive ? 'font-bold text-primary-700' : ''}`}>{item.label}</span>
                 </>
               )}
             </NavLink>
@@ -246,9 +245,10 @@ export default function FarmerLayout() {
         })()}
       </nav>
 
-      {/* Chatbot — bottom-20 on mobile clears the fixed bottom nav (h-16 + safe
-          area) below it; sm:bottom-6 on desktop, where there's no bottom nav. */}
-      <div className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40">
+      {/* Chatbot — cleared above the fixed bottom nav (min-h-16 + safe-area
+          inset) by the same breakpoint (md) the nav itself hides at, so the
+          two never disagree about which one is on screen. */}
+      <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom)+20px)] right-4 md:bottom-6 md:right-6 z-40">
         {chatOpen && (
           <div className="mb-3 bg-white rounded-2xl shadow-2xl border border-gray-200 w-72 sm:w-80 flex flex-col overflow-hidden animate-fade-in">
             <div className="bg-agro-green text-white p-4 flex items-center justify-between">
