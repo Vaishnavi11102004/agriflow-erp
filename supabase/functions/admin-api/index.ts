@@ -299,7 +299,7 @@ serve(async (req) => {
       if (!['paid', 'pending', 'failed'].includes(status)) {
         return new Response(JSON.stringify({ error: 'Invalid status' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
-      const { error } = await supabase.from('seed_purchases').update({ payment_status: status }).eq('id', purchaseId);
+      const { data: purchase, error } = await supabase.from('seed_purchases').update({ payment_status: status }).eq('id', purchaseId).select('farmer_id').single();
       if (error) throw error;
 
       if (adminId) {
@@ -308,6 +308,17 @@ serve(async (req) => {
           entity_type: 'seed_purchase', entity_id: purchaseId, details: `Payment status changed to ${status}`,
         });
       }
+      // Notify the farmer of the approval/rejection outcome
+      if (purchase?.farmer_id && (status === 'paid' || status === 'failed')) {
+        await supabase.from('notifications').insert({
+          user_id: purchase.farmer_id,
+          title: status === 'paid' ? 'Seed Purchase Approved' : 'Seed Purchase Rejected',
+          message: status === 'paid' ? 'Your seed purchase has been approved.' : 'Your seed purchase payment could not be confirmed. Please contact the warehouse.',
+          type: status === 'paid' ? 'success' : 'error',
+        });
+      }
+      // Always sync notification read state for all users
+      await supabase.from('notifications').update({ is_read: true }).eq('reference_type', 'seed_purchase').eq('reference_id', purchaseId);
       return new Response(JSON.stringify({ message: 'Purchase updated' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 

@@ -128,7 +128,7 @@ export default function SuperAdminLayout() {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0 pb-16 md:pb-0">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
         <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center gap-3 shadow-sm z-30 flex-shrink-0">
           <button onClick={() => setSidebarOpen(v => !v)} className="btn-icon flex-shrink-0 flex">
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
@@ -173,10 +173,10 @@ export default function SuperAdminLayout() {
         </main>
       </div>
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex overflow-x-auto z-40 h-16 shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.05)] safe-area-pb">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex items-stretch z-40 min-h-16 shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.05)] pb-[env(safe-area-inset-bottom)]">
         {navItems.filter(item => item.type !== 'header' && ['/visits', '/grain-sales', '/booking-slots', '/seed-purchases', '/seeds', '/profile'].some(p => item.to.endsWith(p))).map(item => (
           <NavLink key={item.to} to={item.to} end={item.end}
-            className={({ isActive }) => `flex-shrink-0 flex flex-col items-center justify-center w-[72px] h-full gap-1 transition-all ${isActive ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'}`}>
+            className={({ isActive }) => `flex-1 min-w-0 flex flex-col items-center justify-center h-full gap-1 transition-all ${isActive ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'}`}>
             {({ isActive }) => (
               <>
                 <div className={`relative flex items-center justify-center w-10 h-8 rounded-full transition-all ${isActive ? 'bg-primary-100/50 scale-110' : ''}`}>

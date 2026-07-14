@@ -83,16 +83,16 @@ export default function AllFarmers() {
         </div>
 
         {/* Desktop table */}
-        <div className="hidden sm:block overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        <div className="hidden sm:block overflow-x-hidden">
+          <table className="w-full text-left border-collapse table-fixed">
             <thead>
               <tr className="bg-gray-50">
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('farmer_details')}</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('contact')}</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('location_land')}</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('status')}</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('joined_date')}</th>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">{t('view')}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-[22%]">{t('farmer_details')}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-[22%]">{t('contact')}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-[22%]">{t('location_land')}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-[12%]">{t('status')}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-[12%]">{t('joined_date')}</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right w-[10%]">{t('view')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -102,16 +102,16 @@ export default function AllFarmers() {
                   ? <tr><td colSpan={6} className="text-center py-10 text-gray-400">{t('no_farmers_found')}</td></tr>
                   : filtered.map(f => (
                     <tr key={f.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="p-4 font-semibold text-gray-800">
+                      <td className="p-4 font-semibold text-gray-800 break-words">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 font-bold">{f.name?.[0]}</div>
-                          {f.name}
+                          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 font-bold shrink-0">{f.name?.[0]}</div>
+                          <span className="break-all">{f.name}</span>
                         </div>
                       </td>
-                      <td className="p-4 text-gray-600"><p>{f.phone}</p><p className="text-xs text-gray-400">{f.email || t('no_email')}</p></td>
+                      <td className="p-4 text-gray-600"><p className="break-all">{f.phone}</p><p className="text-xs text-gray-400 break-all">{f.email || t('no_email')}</p></td>
                       <td className="p-4 text-gray-600">
-                        <p className="flex items-center gap-1 text-sm"><MapPin size={14} className="text-gray-400" />{f.address || 'Unknown'}</p>
-                        <p className="text-xs text-primary-600 ml-5 font-semibold">{f.acres_of_land || 0} {t('acres')}</p>
+                        <p className="flex items-start gap-1 text-sm break-words"><MapPin size={14} className="text-gray-400 mt-1 shrink-0" />{f.address || 'Unknown'}</p>
+                        <p className="text-xs text-primary-600 ml-5 font-semibold shrink-0">{f.acres_of_land || 0} {t('acres')}</p>
                       </td>
                       <td className="p-4">
                         <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${f.status === 'active' ? 'bg-green-100 text-green-600' : f.status === 'rejected' ? 'bg-red-100 text-red-600' : 'bg-yellow-100 text-yellow-600'}`}>

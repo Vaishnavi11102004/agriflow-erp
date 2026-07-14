@@ -59,9 +59,9 @@ export default function SeedPurchases() {
     <div style="text-align:right"><h2>INVOICE</h2><div>${purchase.invoice_number || `SP-${String(purchase.id).padStart(5,'0')}`}</div>
     <div>${purchase.created_at ? new Date(purchase.created_at).toLocaleDateString('en-IN') : '-'}</div></div></div>
     <p><strong>Farmer:</strong> ${purchase.farmer_name || '-'} | <strong>Phone:</strong> ${purchase.farmer_phone || '-'}</p>
-    <table><thead><tr><th>Item</th><th>Variety</th><th class="text-right">Qty (kg)</th><th class="text-right">Price/kg</th><th class="text-right">Total</th></tr></thead>
+    <table><thead><tr><th>Item</th><th>Variety</th><th class="text-right">Qty (Quintals)</th><th class="text-right">Price/kg</th><th class="text-right">Total</th></tr></thead>
     <tbody><tr><td>${purchase.seed_name || '-'}</td><td>${purchase.seed_variety || '-'}</td>
-    <td class="text-right">${purchase.quantity_kg || 0}</td><td class="text-right">₹${parseFloat(purchase.price_per_kg || 0).toFixed(2)}</td>
+    <td class="text-right">${(purchase.quantity_kg / 100.0).toFixed(2)}</td><td class="text-right">₹${parseFloat(purchase.price_per_kg || 0).toFixed(2)}</td>
     <td class="text-right">₹${parseFloat(purchase.total_amount || 0).toFixed(2)}</td></tr>
     <tr class="total-row"><td colspan="4" class="text-right">Grand Total</td><td class="text-right">₹${parseFloat(purchase.total_amount || 0).toFixed(2)}</td></tr>
     </tbody></table>
@@ -109,7 +109,7 @@ export default function SeedPurchases() {
                 <div className="flex justify-between items-start mb-1">
                   <div>
                     <p className="font-semibold text-gray-800">{p.farmer_name}</p>
-                    <p className="text-xs text-gray-500">{p.seed_name} · {p.quantity_kg} kg</p>
+                    <p className="text-xs text-gray-500">{p.seed_name} · {(p.quantity_kg / 100).toFixed(2)} Qtl</p>
                   </div>
                   <span className={`badge ${statusBadge(p.payment_status)}`}>{p.payment_status}</span>
                 </div>
@@ -128,7 +128,7 @@ export default function SeedPurchases() {
               <th>{t('invoice') || 'Invoice'}</th>
               <th>{t('farmer') || 'Farmer'}</th>
               <th>{t('seed') || 'Seed'}</th>
-              <th>{t('quantity') || 'Qty (kg)'}</th>
+              <th>{t('quantity') || 'Qty (Quintals)'}</th>
               <th>{t('price_per_kg') || 'Price/kg'}</th>
               <th>{t('total') || 'Total'}</th>
               <th>{t('status') || 'Status'}</th>
@@ -156,7 +156,7 @@ export default function SeedPurchases() {
                     <p className="text-sm font-medium text-gray-800">{p.seed_name}</p>
                     <p className="text-[10px] text-gray-400">{p.seed_variety}</p>
                   </td>
-                  <td>{p.quantity_kg}</td>
+                  <td>{(p.quantity_kg / 100).toFixed(2)}</td>
                   <td className="font-semibold">₹{p.price_per_kg}</td>
                   <td className="font-bold text-gray-900">₹{parseFloat(p.total_amount || 0).toLocaleString()}</td>
                   <td><span className={`badge ${statusBadge(p.payment_status)}`}>{p.payment_status}</span></td>
@@ -201,7 +201,7 @@ export default function SeedPurchases() {
                 <div><p className="text-xs text-gray-500">Phone</p><p>{selectedPurchase.farmer_phone}</p></div>
                 <div><p className="text-xs text-gray-500">Seed</p><p className="font-semibold">{selectedPurchase.seed_name}</p></div>
                 <div><p className="text-xs text-gray-500">Variety</p><p>{selectedPurchase.seed_variety || '-'}</p></div>
-                <div><p className="text-xs text-gray-500">Quantity</p><p>{selectedPurchase.quantity_kg} kg</p></div>
+                <div><p className="text-xs text-gray-500">Quantity</p><p>{(selectedPurchase.quantity_kg / 100).toFixed(2)} Qtl</p></div>
                 <div><p className="text-xs text-gray-500">Price/kg</p><p>₹{selectedPurchase.price_per_kg}</p></div>
                 <div className="col-span-2"><p className="text-xs text-gray-500">Total Amount</p><p className="font-bold text-lg text-gray-900">₹{parseFloat(selectedPurchase.total_amount || 0).toLocaleString()}</p></div>
                 <div className="col-span-2"><p className="text-xs text-gray-500">Date</p><p>{selectedPurchase.created_at ? new Date(selectedPurchase.created_at).toLocaleDateString('en-IN') : '-'}</p></div>

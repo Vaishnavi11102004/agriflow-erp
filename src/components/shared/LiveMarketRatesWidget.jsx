@@ -13,7 +13,7 @@ export default function LiveMarketRatesWidget() {
   });
 
   return (
-    <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-[9999] flex flex-col items-end">
+    <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom)+20px)] md:bottom-6 right-4 md:right-6 z-[9999] flex flex-col items-end">
       {isOpen && (
         <div className="mb-4 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden transform transition-all duration-300 origin-bottom-right">
           <div className="bg-gradient-to-r from-primary-600 to-green-600 p-4 text-white flex items-center justify-between">

@@ -93,7 +93,7 @@ export default function LandingPage() {
     if (user) {
       if (user.role === 'farmer') {
         if (action === 'buy') return navigate('/farmer/seeds');
-        if (action === 'sell') return navigate('/farmer/grain-sales');
+        if (action === 'sell') return navigate('/farmer/booking-slots');
         return navigate('/farmer');
       }
       navigate('/manager/dashboard');

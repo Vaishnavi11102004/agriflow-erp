@@ -151,7 +151,7 @@ export default function FarmerProfile() {
           <Link to="/farmer/transactions" className="btn-secondary btn-sm flex items-center gap-2 flex-1 justify-center">
             <History size={16} /> {t('view_transaction_history')}
           </Link>
-          <Link to="/farmer/grain-sales" className="btn-secondary btn-sm flex items-center gap-2 flex-1 justify-center">
+          <Link to="/farmer/booking-slots" className="btn-secondary btn-sm flex items-center gap-2 flex-1 justify-center">
             <Wheat size={16} /> {t('grain_sales')}
           </Link>
         </div>

@@ -75,7 +75,6 @@ export default function AppRouter() {
           <Route path="crops" element={<CropManagement />} />
           <Route path="seeds" element={<SeedPurchase />} />
           <Route path="booking-slots" element={<BookingSlot />} />
-          <Route path="grain-sales" element={<GrainSales />} />
           <Route path="transactions" element={<TransactionHistory />} />
           <Route path="profile" element={<FarmerProfile />} />
         </Route>

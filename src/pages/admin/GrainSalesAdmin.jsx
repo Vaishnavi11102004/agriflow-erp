@@ -61,9 +61,9 @@ export default function GrainSalesAdmin() {
         farmer_id: parseInt(form.farmer_id),
         grain_type: form.grain_type,
         grade: form.grade,
-        raw_material_kg: rawQty,
-        good_material_kg: goodQty,
-        wastage_kg: wastageQty
+        raw_material_kg: rawQty * 100,
+        good_material_kg: goodQty * 100,
+        wastage_kg: wastageQty * 100
       }, user?.id);
       toast.success('Crop procurement logged successfully!');
       setShowLogModal(false);
@@ -141,8 +141,8 @@ export default function GrainSalesAdmin() {
             <tr>
               <td>${sale.grain_type} Procurement</td>
               <td>${sale.grade}</td>
-              <td>${sale.good_material_kg}</td>
-              <td>${parseFloat(sale.price_per_kg || 0).toFixed(2)}</td>
+              <td>${(sale.good_material_kg / 100).toFixed(2)}</td>
+              <td>${(parseFloat(sale.price_per_kg || 0) * 100).toFixed(2)}</td>
               <td style="text-align: right;">${parseFloat(sale.total_amount || 0).toFixed(2)}</td>
             </tr>
           </table>
@@ -212,7 +212,7 @@ export default function GrainSalesAdmin() {
                 <span className={`badge ${statusBadge(s.status)}`}>{s.status}</span>
               </div>
               <div className="flex justify-between mt-2 text-xs text-gray-500">
-                <span>{s.good_material_kg} Quintals good</span>
+                <span>{(s.good_material_kg / 100).toFixed(1)} Quintals good</span>
                 <span className="font-semibold text-gray-700">₹{(s.total_amount || 0).toLocaleString('en-IN')}</span>
               </div>
             </button>
@@ -222,7 +222,7 @@ export default function GrainSalesAdmin() {
         <div className="hidden sm:block table-container">
           <table className="data-table">
             <thead><tr>
-              <th>{t("farmer")}</th><th>{t("grain_grade")}</th><th>{t("good_qty_kg")}</th><th>{t("est_amount")}</th><th>{t("status")}</th><th>{t("date")}</th><th>{t("action")}</th>
+              <th>{t("farmer")}</th><th>{t("grain_grade")}</th><th>Good Qty (Quintals)</th><th>{t("est_amount")}</th><th>{t("status")}</th><th>{t("date")}</th><th>{t("action")}</th>
             </tr></thead>
             <tbody>
               {loading ? <tr><td colSpan={7} className="text-center py-10"><div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto" /></td></tr>
@@ -234,7 +234,7 @@ export default function GrainSalesAdmin() {
                         <span className="font-semibold">{s.grain_type}</span>
                         <span className="ml-2 badge bg-gray-100 text-gray-600">{t('grade')} {s.grade}</span>
                       </td>
-                      <td className="text-green-600 font-semibold">{s.good_material_kg}</td>
+                      <td className="text-green-600 font-semibold">{(s.good_material_kg / 100).toFixed(1)}</td>
                       <td className="font-bold">₹{(s.total_amount || 0).toLocaleString('en-IN')}</td>
                       <td><span className={`badge ${statusBadge(s.status)}`}>{s.status}</span></td>
                       <td className="text-xs">{new Date(s.created_at).toLocaleDateString('en-IN')}</td>
@@ -334,9 +334,9 @@ export default function GrainSalesAdmin() {
               ['Farmer', selectedSale.farmer_name],
               ['Crop Type', selectedSale.grain_type],
               ['Grade', `Grade ${selectedSale.grade}`],
-              ['Raw Material', `${selectedSale.raw_material_kg} Quintals`],
-              ['Good Qty', `${selectedSale.good_material_kg} Quintals`],
-              ['Wastage', `${selectedSale.wastage_kg || 0} Quintals`],
+              ['Raw Material', `${(selectedSale.raw_material_kg / 100).toFixed(1)} Quintals`],
+              ['Good Qty', `${(selectedSale.good_material_kg / 100).toFixed(1)} Quintals`],
+              ['Wastage', `${((selectedSale.wastage_kg || 0) / 100).toFixed(1)} Quintals`],
               ['Est. Amount', `₹${(selectedSale.total_amount || 0).toLocaleString('en-IN')}`],
               ['Date', new Date(selectedSale.created_at).toLocaleDateString('en-IN')],
             ].map(([label, value]) => (
