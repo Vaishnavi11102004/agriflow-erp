@@ -25,6 +25,7 @@ serve(async (req) => {
     if (action === 'approveFarmer') {
       const { farmerId, status, notes, adminId } = payload;
       let appUserId = typeof farmerId === 'number' ? farmerId : parseInt(farmerId);
+<<<<<<< HEAD
 
       if (isNaN(appUserId)) {
         // farmerId is a UUID (profiles.id) -- resolve to the bigint app_user_id the RPC expects
@@ -38,6 +39,33 @@ serve(async (req) => {
       // approve_farmer() already marks reference_type='farmer' notifications as read
       // for this reference_id (a bigint app_user_id), so every Manager/Super Admin
       // dashboard sees the update without a separate sync call here.
+=======
+      let profileId = '';
+      
+      if (isNaN(appUserId)) {
+        // farmerId must be UUID, resolve it
+        const { data: profile } = await supabase.from('profiles').select('id, app_user_id').eq('id', farmerId).maybeSingle();
+        if (profile) {
+          appUserId = profile.app_user_id;
+          profileId = profile.id;
+        }
+      } else {
+        // farmerId is integer app_user_id, resolve the UUID profile id
+        const { data: profile } = await supabase.from('profiles').select('id, app_user_id').eq('app_user_id', appUserId).maybeSingle();
+        if (profile) {
+          profileId = profile.id;
+        }
+      }
+      
+      const { error } = await supabase.rpc('approve_farmer', { p_farmer_id: appUserId, p_status: status, p_notes: notes || null, p_admin_id: adminId });
+      if (error) throw error;
+      
+      const ids = [farmerId.toString()];
+      if (appUserId) ids.push(appUserId.toString());
+      if (profileId) ids.push(profileId);
+      
+      await supabase.from('notifications').update({ is_read: true }).eq('reference_type', 'farmer').in('reference_id', ids);
+>>>>>>> origin/main
       return new Response(JSON.stringify({ message: 'Farmer status updated' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 

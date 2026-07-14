@@ -113,9 +113,33 @@ serve(async (req) => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
+<<<<<<< HEAD
       // Manager/Super Admin notifications for this purchase are created inside the
       // purchase_seeds() DB function (in Quintals, for every payment method) so we
       // don't insert a second, duplicate notification here.
+=======
+      // Generate seed purchase notifications for admin/manager
+      const purchaseId = data?.purchase_id || data?.id;
+      if (purchaseId) {
+        const { data: farmer } = await supabase.from('users').select('name').eq('id', purchaseData.farmer_id).maybeSingle();
+        const { data: seed } = await supabase.from('seeds').select('name').eq('id', purchaseData.seed_id).maybeSingle();
+        const farmerName = farmer?.name || 'A farmer';
+        const seedName = seed?.name || 'seeds';
+        const qty = parseFloat(purchaseData.quantity_kg);
+        const { data: admins } = await supabase.from('users').select('id').in('role', ['admin', 'manager', 'super_admin']);
+        if (admins && admins.length > 0) {
+          const notifications = admins.map((admin: any) => ({
+            user_id: admin.id,
+            title: 'New Seed Purchase',
+            message: `${farmerName} purchased ${qty} kg of ${seedName}. Payment: ${purchaseData.payment_method}.`,
+            type: 'info',
+            reference_type: 'seed_purchase',
+            reference_id: purchaseId
+          }));
+          await supabase.from('notifications').insert(notifications);
+        }
+      }
+>>>>>>> origin/main
 
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
