@@ -300,11 +300,25 @@ export default function GrainSalesAdmin() {
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="label">Total Raw Qty (Quintals) *</label>
-                  <input type="number" value={form.raw_material_kg} onChange={e => setForm(f => ({ ...f, raw_material_kg: e.target.value }))} className="input-field" placeholder="e.g. 10" required />
+                  <input type="number" value={form.raw_material_kg} onChange={e => {
+                    const raw = e.target.value;
+                    setForm(f => {
+                      const good = parseFloat(f.good_material_kg) || 0;
+                      const r = parseFloat(raw) || 0;
+                      return { ...f, raw_material_kg: raw, wastage_kg: (r - good) > 0 ? (r - good).toString() : '0' };
+                    });
+                  }} className="input-field" placeholder="e.g. 10" required />
                 </div>
                 <div>
                   <label className="label">Good Qty (Quintals) *</label>
-                  <input type="number" value={form.good_material_kg} onChange={e => setForm(f => ({ ...f, good_material_kg: e.target.value }))} className="input-field" placeholder="e.g. 9.5" required />
+                  <input type="number" value={form.good_material_kg} onChange={e => {
+                    const good = e.target.value;
+                    setForm(f => {
+                      const raw = parseFloat(f.raw_material_kg) || 0;
+                      const g = parseFloat(good) || 0;
+                      return { ...f, good_material_kg: good, wastage_kg: (raw - g) > 0 ? (raw - g).toString() : '0' };
+                    });
+                  }} className="input-field" placeholder="e.g. 9.5" required />
                 </div>
                 <div>
                   <label className="label">Wastage (Quintals)</label>

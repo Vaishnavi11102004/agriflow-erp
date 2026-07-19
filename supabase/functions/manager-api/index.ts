@@ -25,21 +25,6 @@ serve(async (req) => {
     if (action === 'approveFarmer') {
       const { farmerId, status, notes, adminId } = payload;
       let appUserId = typeof farmerId === 'number' ? farmerId : parseInt(farmerId);
-<<<<<<< HEAD
-
-      if (isNaN(appUserId)) {
-        // farmerId is a UUID (profiles.id) -- resolve to the bigint app_user_id the RPC expects
-        const { data: profile } = await supabase.from('profiles').select('app_user_id').eq('id', farmerId).maybeSingle();
-        appUserId = profile?.app_user_id;
-      }
-
-      const { error } = await supabase.rpc('approve_farmer', { p_farmer_id: appUserId, p_status: status, p_notes: notes || null, p_admin_id: adminId });
-      if (error) throw error;
-
-      // approve_farmer() already marks reference_type='farmer' notifications as read
-      // for this reference_id (a bigint app_user_id), so every Manager/Super Admin
-      // dashboard sees the update without a separate sync call here.
-=======
       let profileId = '';
       
       if (isNaN(appUserId)) {
@@ -65,7 +50,6 @@ serve(async (req) => {
       if (profileId) ids.push(profileId);
       
       await supabase.from('notifications').update({ is_read: true }).eq('reference_type', 'farmer').in('reference_id', ids);
->>>>>>> origin/main
       return new Response(JSON.stringify({ message: 'Farmer status updated' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -197,6 +181,19 @@ serve(async (req) => {
       const { error } = await supabase.rpc('update_booking_status', { p_slot_id: slotId, p_status: status, p_warehouse_slot_id: warehouseSlotId ? parseInt(warehouseSlotId) : null, p_admin_name: adminName, p_admin_id: adminId });
       if (error) throw error;
       await supabase.from('notifications').update({ is_read: true }).eq('reference_type', 'booking_slot').eq('reference_id', slotId);
+      
+      const { data: slot } = await supabase.from('booking_slots').select('farmer_id, booking_date').eq('id', slotId).maybeSingle();
+      if (slot?.farmer_id && (status === 'confirmed' || status === 'rejected' || status === 'cancelled')) {
+        await supabase.from('notifications').insert({
+          user_id: slot.farmer_id,
+          title: `Booking Slot ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+          message: `Your booking slot for ${slot.booking_date} has been ${status}.`,
+          type: status === 'confirmed' ? 'success' : 'error',
+          reference_type: 'booking_slot',
+          reference_id: slotId
+        });
+      }
+
       return new Response(JSON.stringify({ message: `Slot ${status}` }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
