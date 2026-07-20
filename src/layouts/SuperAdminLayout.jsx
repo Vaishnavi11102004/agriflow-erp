@@ -7,6 +7,7 @@ import {
   Package, Warehouse, Calendar, MapPin, BarChart2, TrendingUp, Wheat, FileText, User, ShoppingBag, Database
 } from 'lucide-react';
 import NotificationCenter from '../components/shared/NotificationCenter';
+import { BRAND_NAME } from '../utils/brandLogo';
 
 const LANGUAGES = [
   { code: 'en', label: 'English', flag: '🇬🇧' },
@@ -82,11 +83,11 @@ export default function SuperAdminLayout() {
         <div className="w-64 h-full bg-gradient-to-b from-primary-800 to-primary-950 flex flex-col shadow-xl">
           <div className="p-5 border-b border-white/10">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-700 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Crown className="text-white" size={20} />
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+                <img src="/logo-icon.jpeg" alt={BRAND_NAME} className="w-full h-full object-cover" />
               </div>
               <div>
-                <h1 className="text-white font-bold text-lg leading-none">AgriFlow ERP</h1>
+                <h1 className="text-white font-bold text-lg leading-none">{BRAND_NAME}</h1>
                 <p className="text-white/50 text-xs mt-0.5">Super Admin</p>
               </div>
             </div>
@@ -136,10 +137,10 @@ export default function SuperAdminLayout() {
           
           {/* Mobile Logo */}
           <div className="md:hidden flex items-center gap-2 flex-1 min-w-0">
-            <div className="w-8 h-8 bg-gradient-to-br from-yellow-500 to-yellow-700 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Crown className="text-white" size={16} />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden border border-gray-200">
+              <img src="/logo-icon.jpeg" alt={BRAND_NAME} className="w-full h-full object-cover" />
             </div>
-            <h2 className="text-gray-900 font-bold text-base truncate">AgriFlow</h2>
+            <h2 className="text-gray-900 font-bold text-base truncate">{BRAND_NAME}</h2>
           </div>
 
           <div className="flex-1 min-w-0 hidden sm:block">

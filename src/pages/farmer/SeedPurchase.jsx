@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { CACHE_TIMES } from '../../lib/queryConfig';
 import { ShoppingCart, X, CheckCircle, Search, Tag, Filter, Download, Warehouse, QrCode } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { BRAND_NAME, BRAND_LOGO_DATA_URI } from '../../utils/brandLogo';
 
 const GRAIN_PHOTOS = {
   Rice: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=400',
@@ -111,7 +112,8 @@ export default function SeedPurchase() {
     <style>
         body { font-family: 'Inter', sans-serif; padding: 40px; color: #333; max-width: 800px; margin: auto; }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #16a34a; padding-bottom: 20px; margin-bottom: 30px; }
-        .logo { font-size: 24px; font-weight: bold; color: #16a34a; }
+        .logo { font-size: 20px; font-weight: bold; color: #16a34a; display: flex; align-items: center; gap: 10px; }
+        .logo img { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; }
         .invoice-title { font-size: 28px; font-weight: bold; color: #1f2937; }
         .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 40px; }
         .detail-box { background: #f8fafc; padding: 15px; border-radius: 8px; }
@@ -128,7 +130,7 @@ export default function SeedPurchase() {
 <body>
     <div style="text-align: center; margin-bottom: 20px;"><span class="success-badge">✅ Payment Successful</span></div>
     <div class="header">
-        <div class="logo">🌱 AgriFlow</div>
+        <div class="logo"><img src="${BRAND_LOGO_DATA_URI}" alt="${BRAND_NAME}" />${BRAND_NAME}</div>
         <div class="invoice-title">INVOICE</div>
     </div>
     <div class="details-grid">
@@ -158,7 +160,7 @@ export default function SeedPurchase() {
     </table>
     <div class="total-row">Total Paid: ₹${(p.total_amount || p.quantity_kg * p.price_per_kg).toLocaleString('en-IN')}</div>
     <div class="footer">
-        Thank you for choosing AgriFlow for your agricultural needs!<br>
+        Thank you for choosing ${BRAND_NAME} for your agricultural needs!<br>
         <small>This is a computer-generated invoice and requires no signature.</small>
     </div>
 </body>
@@ -174,7 +176,8 @@ export default function SeedPurchase() {
     <style>
         body { font-family: 'Inter', sans-serif; padding: 40px; color: #333; max-width: 800px; margin: auto; }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #16a34a; padding-bottom: 20px; margin-bottom: 30px; }
-        .logo { font-size: 24px; font-weight: bold; color: #16a34a; }
+        .logo { font-size: 20px; font-weight: bold; color: #16a34a; display: flex; align-items: center; gap: 10px; }
+        .logo img { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; }
         .invoice-title { font-size: 28px; font-weight: bold; color: #1f2937; }
         .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 40px; }
         .detail-box { background: #f8fafc; padding: 15px; border-radius: 8px; }
@@ -189,7 +192,7 @@ export default function SeedPurchase() {
 </head>
 <body>
     <div class="header">
-        <div class="logo">🌱 AgriFlow</div>
+        <div class="logo"><img src="${BRAND_LOGO_DATA_URI}" alt="${BRAND_NAME}" />${BRAND_NAME}</div>
         <div class="invoice-title">INVOICE</div>
     </div>
     
@@ -232,7 +235,7 @@ export default function SeedPurchase() {
     </div>
 
     <div class="footer">
-        Thank you for choosing AgriFlow for your agricultural needs!<br>
+        Thank you for choosing ${BRAND_NAME} for your agricultural needs!<br>
         <small>This is a computer-generated invoice and requires no signature.</small>
     </div>
 </body>
@@ -594,7 +597,7 @@ export default function SeedPurchase() {
                 <div className="flex flex-col items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
                   <p className="text-xs text-gray-500 font-medium">Scan to Pay ₹{total}</p>
                   <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=agriflow@upi%26pn=AgriFlow%26am=${total}%26tn=${encodeURIComponent('Seed Purchase: ' + (selected?.name || ''))}`}
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=sivasivaseeds@upi%26pn=${encodeURIComponent(BRAND_NAME)}%26am=${total}%26tn=${encodeURIComponent('Seed Purchase: ' + (selected?.name || ''))}`}
                     alt="UPI QR" className="w-32 h-32 rounded-lg"
                   />
                   <p className="text-[10px] text-gray-400">Demo QR — for reference only</p>
@@ -636,7 +639,7 @@ export default function SeedPurchase() {
             </div>
             <div className="bg-gray-50 rounded-xl p-4 flex flex-col items-center gap-3">
               <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=agriflow@upi%26pn=AgriFlow%26am=${qrTx.total_amount}%26tn=${encodeURIComponent('Seed: ' + (qrTx.seed_name || ''))}`}
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=sivasivaseeds@upi%26pn=${encodeURIComponent(BRAND_NAME)}%26am=${qrTx.total_amount}%26tn=${encodeURIComponent('Seed: ' + (qrTx.seed_name || ''))}`}
                 alt="Payment QR" className="w-44 h-44 rounded-lg"
               />
               <p className="text-xs text-gray-500">Scan with any UPI app</p>

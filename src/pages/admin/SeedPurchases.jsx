@@ -5,6 +5,7 @@ import adminService from '../../services/adminService';
 import { useAuth } from '../../context/AuthContext';
 import { ShoppingBag, Search, Download, X, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { BRAND_NAME, BRAND_LOGO_DATA_URI } from '../../utils/brandLogo';
 
 export default function SeedPurchases() {
   const { t } = useTranslation();
@@ -49,13 +50,14 @@ export default function SeedPurchases() {
     <style>body{font-family:sans-serif;padding:40px;color:#333;background:#f8fafc}
     .invoice{background:#fff;padding:48px;border-radius:16px;box-shadow:0 4px 6px -1px rgba(0,0,0,.1);max-width:800px;margin:auto}
     .header{display:flex;justify-content:space-between;border-bottom:3px solid #16a34a;padding-bottom:24px;margin-bottom:32px}
-    .logo{font-size:28px;font-weight:900;color:#16a34a}
+    .logo{font-size:22px;font-weight:900;color:#16a34a;display:flex;align-items:center;gap:12px}
+    .logo img{width:40px;height:40px;border-radius:8px;object-fit:cover}
     table{width:100%;border-collapse:collapse}th{background:#f1f5f9;padding:12px;text-align:left;font-size:12px;text-transform:uppercase}
     td{padding:14px;border:1px solid #e2e8f0;font-size:14px}.text-right{text-align:right}
     .total-row{background:#f0fdf4}.total-row td{font-weight:800;font-size:16px;color:#16a34a}
     .footer{text-align:center;color:#94a3b8;font-size:12px;margin-top:40px;border-top:1px solid #e2e8f0;padding-top:20px}</style></head>
     <body><div class="invoice">
-    <div class="header"><div class="logo">🌱 AgriFlow ERP</div>
+    <div class="header"><div class="logo"><img src="${BRAND_LOGO_DATA_URI}" alt="${BRAND_NAME}" />${BRAND_NAME}</div>
     <div style="text-align:right"><h2>INVOICE</h2><div>${purchase.invoice_number || `SP-${String(purchase.id).padStart(5,'0')}`}</div>
     <div>${purchase.created_at ? new Date(purchase.created_at).toLocaleDateString('en-IN') : '-'}</div></div></div>
     <p><strong>Farmer:</strong> ${purchase.farmer_name || '-'} | <strong>Phone:</strong> ${purchase.farmer_phone || '-'}</p>
@@ -66,7 +68,7 @@ export default function SeedPurchases() {
     <tr class="total-row"><td colspan="4" class="text-right">Grand Total</td><td class="text-right">₹${parseFloat(purchase.total_amount || 0).toFixed(2)}</td></tr>
     </tbody></table>
     <p><strong>Status:</strong> ${(purchase.payment_status || 'pending').toUpperCase()}</p>
-    <div class="footer">AgriFlow Management System — System-generated invoice. No signature required.</div>
+    <div class="footer">${BRAND_NAME} Management System — System-generated invoice. No signature required.</div>
     </div></body></html>`;
     const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);

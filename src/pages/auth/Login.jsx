@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import authService from '../../services/authService';
 import validators from '../../utils/validators';
 import FieldError from '../../components/shared/FieldError';
+import { BRAND_NAME } from '../../utils/brandLogo';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -146,10 +147,10 @@ export default function Login() {
         <div className="absolute bottom-[-60px] left-[-60px] w-48 h-48 bg-white/10 rounded-full blur-2xl" />
         
         <div className="relative z-10 text-center">
-          <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-xl backdrop-blur-sm border border-white/20">
-            <Leaf className="text-white" size={40} />
+          <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-xl border border-white/20 overflow-hidden">
+            <img src="/logo-icon.jpeg" alt={BRAND_NAME} className="w-full h-full object-cover" />
           </div>
-          <h1 className="text-5xl font-black text-white mb-4 leading-tight">AgriFlow ERP</h1>
+          <h1 className="text-5xl font-black text-white mb-4 leading-tight">{BRAND_NAME}</h1>
           <p className="text-white/80 text-xl mb-10">{t('agricultural_partner')}</p>
 
           <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto">
@@ -189,10 +190,10 @@ export default function Login() {
           <div className="w-full max-w-md animate-fade-in bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
             {/* Mobile logo */}
             <div className="lg:hidden flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center shadow-md">
-                <Leaf className="text-white" size={20} />
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-md overflow-hidden border border-gray-200">
+                <img src="/logo-icon.jpeg" alt={BRAND_NAME} className="w-full h-full object-cover" />
               </div>
-              <h1 className="text-2xl font-black text-emerald-700">AgriFlow</h1>
+              <h1 className="text-2xl font-black text-emerald-700">{BRAND_NAME}</h1>
             </div>
 
             <div className="mb-8">

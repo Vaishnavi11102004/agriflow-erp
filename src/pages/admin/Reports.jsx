@@ -173,7 +173,7 @@ export default function Reports() {
       summary: reportConfig.summary,
       columns: reportConfig.columns,
       rows: reportConfig.rows,
-    }, `AgriFlow_${reportMeta.title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`);
+    }, `SriSivaSaiSeeds_${reportMeta.title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`);
     toast.success('Report downloaded');
   };
 

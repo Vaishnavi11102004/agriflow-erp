@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Leaf, LogIn, PhoneCall, ArrowLeft, ArrowRight, MessageCircle, Mail, MapPin } from 'lucide-react';
+import { BRAND_NAME } from '../../utils/brandLogo';
 
 export default function GetStarted() {
   const { t } = useTranslation();
@@ -25,7 +26,7 @@ export default function GetStarted() {
               <Leaf className="text-white" size={30} />
             </div>
             <h1 className="text-3xl sm:text-4xl font-black text-gray-900 mb-2">
-              {t('get_started_title', 'Welcome to AgriFlow')}
+              {t('get_started_title', `Welcome to ${BRAND_NAME}`)}
             </h1>
             <p className="text-gray-500 text-base sm:text-lg max-w-md mx-auto">
               {t('get_started_subtitle', 'How would you like to proceed?')}
@@ -61,7 +62,7 @@ export default function GetStarted() {
                 <PhoneCall size={24} className="text-blue-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">
-                {t('need_credentials', 'New to AgriFlow?')}
+                {t('need_credentials', `New to ${BRAND_NAME}?`)}
               </h3>
               <p className="text-gray-500 text-sm leading-relaxed mb-6 flex-1">
                 {t('need_credentials_desc', 'Get in touch with our team to register your farm and receive your login credentials.')}
@@ -84,7 +85,7 @@ export default function GetStarted() {
                   <div>
                     <p className="text-sm font-semibold text-gray-800">{t('visit_us', 'Visit Us')}</p>
                     <p className="text-xs text-gray-600 leading-relaxed mt-0.5">
-                      {t('office_address', 'AgriFlow Office, Beside Rythu Bazaar, Main Road, Andhra Pradesh — 522001')}
+                      {t('office_address', `${BRAND_NAME} Office, Beside Rythu Bazaar, Main Road, Andhra Pradesh — 522001`)}
                     </p>
                   </div>
                 </div>

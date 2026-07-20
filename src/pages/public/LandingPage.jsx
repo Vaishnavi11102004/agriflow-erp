@@ -11,6 +11,7 @@ import {
 import publicService from '../../services/publicService';
 import marketService from '../../services/marketService';
 import { CACHE_TIMES } from '../../lib/queryConfig';
+import { BRAND_NAME } from '../../utils/brandLogo';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -145,10 +146,10 @@ export default function LandingPage() {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => scrollTo('hero')}>
-              <div className="w-9 h-9 bg-gradient-to-br from-green-500 to-primary-700 rounded-xl flex items-center justify-center shadow">
-                <Leaf size={18} className="text-white" />
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow overflow-hidden">
+                <img src="/logo-icon.jpeg" alt={BRAND_NAME} className="w-full h-full object-cover" />
               </div>
-              <span className="text-xl font-black text-primary-800 tracking-tight">AgriFlow ERP</span>
+              <span className="text-xl font-black text-primary-800 tracking-tight">{BRAND_NAME}</span>
             </div>
 
             {/* Desktop Nav */}
@@ -638,10 +639,10 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-                <Leaf size={16} className="text-white" />
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
+                <img src="/logo-icon.jpeg" alt={BRAND_NAME} className="w-full h-full object-cover" />
               </div>
-              <span className="font-black text-lg text-white">AgriFlow ERP</span>
+              <span className="font-black text-lg text-white">{BRAND_NAME}</span>
             </div>
             <div className="flex gap-6 text-sm text-gray-400">
               <button onClick={() => scrollTo('market-rates')} className="hover:text-white transition-colors">{t('market_rates_nav')}</button>

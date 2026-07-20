@@ -6,6 +6,7 @@ import adminService from '../../services/adminService';
 import { Wheat, Search, CheckCircle, X, DollarSign, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
+import { BRAND_NAME } from '../../utils/brandLogo';
 
 const GRAIN_TYPES = ['Rice', 'Wheat', 'Maize', 'Cotton', 'Groundnut', 'Sugarcane'];
 
@@ -115,7 +116,7 @@ export default function GrainSalesAdmin() {
         </head>
         <body>
           <div class="header">
-            <h1>AgriFlow Payment Invoice</h1>
+            <h1>${BRAND_NAME} Payment Invoice</h1>
             <p style="margin: 0;">Invoice #: INV-${sale.id}-${Date.now()}</p>
             <p style="margin: 0; color: #666;">Date: ${new Date().toLocaleDateString('en-IN')}</p>
           </div>
@@ -126,7 +127,7 @@ export default function GrainSalesAdmin() {
               <p>Crop: ${sale.grain_type}</p>
             </div>
             <div style="text-align: right;">
-              <h3 style="margin-top: 0;">AgriFlow Admin</h3>
+              <h3 style="margin-top: 0;">${BRAND_NAME} Admin</h3>
               <p>Status: Paid</p>
             </div>
           </div>

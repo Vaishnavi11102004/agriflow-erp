@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import adminService from '../../services/adminService';
 import { FileText, Search, Download, Filter } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { BRAND_NAME, BRAND_LOGO_DATA_URI } from '../../utils/brandLogo';
 
 export default function EventLogs() {
   const { t } = useTranslation();
@@ -62,7 +63,8 @@ export default function EventLogs() {
         body { font-family: 'Inter', sans-serif; padding: 40px; color: #333; background: #f8fafc; }
         .report-container { background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); max-width: 1000px; margin: auto; }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #16a34a; padding-bottom: 20px; margin-bottom: 30px; }
-        .logo { font-size: 24px; font-weight: bold; color: #16a34a; }
+        .logo { font-size: 20px; font-weight: bold; color: #16a34a; display: flex; align-items: center; gap: 10px; }
+        .logo img { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; }
         .report-title { font-size: 24px; font-weight: bold; color: #1f2937; text-transform: uppercase; letter-spacing: 1px; }
         .meta { font-size: 14px; color: #64748b; margin-bottom: 30px; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
@@ -75,7 +77,7 @@ export default function EventLogs() {
 <body>
     <div class="report-container">
         <div class="header">
-            <div class="logo">🌱 AgriFlow</div>
+            <div class="logo"><img src="${BRAND_LOGO_DATA_URI}" alt="${BRAND_NAME}" />${BRAND_NAME}</div>
             <div class="report-title">${title}</div>
         </div>
         <div class="meta">
@@ -93,7 +95,7 @@ export default function EventLogs() {
             </tbody>
         </table>
         <div class="footer">
-            AgriFlow Management System &copy; ${new Date().getFullYear()}<br>
+            ${BRAND_NAME} Management System &copy; ${new Date().getFullYear()}<br>
             <small>This log export is system generated.</small>
         </div>
     </div>

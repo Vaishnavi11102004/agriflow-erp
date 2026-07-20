@@ -1,8 +1,9 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { BRAND_NAME, BRAND_LOGO_DATA_URI } from './brandLogo';
 
 /**
- * Builds a standardized AgriFlow ERP PDF report:
+ * Builds a standardized Sri Siva Sai Seeds PDF report:
  * logo/title header, generated date, filters line, summary block,
  * data table, total record count, and a footer on every page.
  */
@@ -11,14 +12,18 @@ export function buildPDFReport({ title, filtersText, summary = [], columns, rows
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
+  try {
+    doc.addImage(BRAND_LOGO_DATA_URI, 'JPEG', 14, 8, 14, 14);
+  } catch { /* logo optional — never block report generation */ }
+
   doc.setFont(undefined, 'bold');
   doc.setFontSize(18);
   doc.setTextColor(22, 163, 74);
-  doc.text('AgriFlow ERP', 14, 18);
+  doc.text(BRAND_NAME, 32, 18);
 
   doc.setFontSize(12);
   doc.setTextColor(30, 41, 59);
-  doc.text(title, 14, 27);
+  doc.text(title, 32, 27);
 
   doc.setFont(undefined, 'normal');
   doc.setFontSize(9);
@@ -70,7 +75,7 @@ export function buildPDFReport({ title, filtersText, summary = [], columns, rows
     doc.setFont(undefined, 'normal');
     doc.setFontSize(8);
     doc.setTextColor(148, 163, 184);
-    doc.text('AgriFlow ERP — System Generated Report', 14, pageHeight - 10);
+    doc.text(`${BRAND_NAME} — System Generated Report`, 14, pageHeight - 10);
     doc.text(`Page ${i} of ${pageCount}`, pageWidth - 14, pageHeight - 10, { align: 'right' });
   }
 

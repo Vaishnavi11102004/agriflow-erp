@@ -12,6 +12,7 @@ import farmerService from '../services/farmerService';
 import toast from 'react-hot-toast';
 import NotificationCenter from '../components/shared/NotificationCenter';
 import { CACHE_TIMES } from '../lib/queryConfig';
+import { BRAND_NAME } from '../utils/brandLogo';
 
 const LANGUAGES = [
   { code: 'en', label: 'English', flag: '🇬🇧' },
@@ -120,11 +121,11 @@ export default function FarmerLayout() {
           {/* Logo */}
           <div className="p-5 border-b border-white/10">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Leaf className="text-white" size={22} />
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+                <img src="/logo-icon.jpeg" alt={BRAND_NAME} className="w-full h-full object-cover" />
               </div>
               <div>
-                <h1 className="text-white font-bold text-lg leading-none">AgriFlow ERP</h1>
+                <h1 className="text-white font-bold text-lg leading-none">{BRAND_NAME}</h1>
                 <p className="text-white/50 text-xs mt-0.5">{t('farmer_portal')}</p>
               </div>
             </div>
@@ -173,10 +174,10 @@ export default function FarmerLayout() {
           
           {/* Mobile Logo */}
           <div className="md:hidden flex items-center gap-2 flex-1 min-w-0">
-            <div className="w-8 h-8 bg-agro-green rounded-lg flex items-center justify-center flex-shrink-0">
-              <Leaf className="text-white" size={16} />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden border border-gray-200">
+              <img src="/logo-icon.jpeg" alt={BRAND_NAME} className="w-full h-full object-cover" />
             </div>
-            <h2 className="text-gray-900 font-bold text-base truncate">AgriFlow</h2>
+            <h2 className="text-gray-900 font-bold text-base truncate">{BRAND_NAME}</h2>
           </div>
 
           <h2 className="text-gray-700 font-semibold text-base flex-1 min-w-0 hidden sm:block truncate">

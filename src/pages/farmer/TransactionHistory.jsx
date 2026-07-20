@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { History, Download, ArrowUpCircle, ArrowDownCircle, Search, X, QrCode } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { downloadPDFReport } from '../../utils/pdfExport';
+import { BRAND_NAME } from '../../utils/brandLogo';
 
 export default function TransactionHistory() {
   const { t } = useTranslation();
@@ -66,7 +67,7 @@ export default function TransactionHistory() {
         `${tx.direction === 'credit' ? '+' : '-'}Rs. ${parseFloat(tx.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
         tx.status,
       ]),
-    }, `AgriFlow_Transactions_${periodLabel.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`);
+    }, `SriSivaSaiSeeds_Transactions_${periodLabel.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`);
   };
 
   const downloadInvoice = (tx) => {
@@ -203,7 +204,7 @@ export default function TransactionHistory() {
             </div>
             <div className="bg-gray-50 rounded-xl p-4 flex flex-col items-center gap-3">
               <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=agriflow@upi%26pn=AgriFlow%26am=${selectedTx.amount}%26tn=${encodeURIComponent(selectedTx.description || 'AgriFlow Payment')}`}
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=sivasivaseeds@upi%26pn=${encodeURIComponent(BRAND_NAME)}%26am=${selectedTx.amount}%26tn=${encodeURIComponent(selectedTx.description || (BRAND_NAME + ' Payment'))}`}
                 alt="Payment QR"
                 className="w-44 h-44 rounded-lg"
               />
